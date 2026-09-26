@@ -26,7 +26,7 @@ export default function ProfilePage({ date, lat, lon }) {
       </div>
 
       <h2 className="section-title">Vertical Profile Viewer</h2>
-      <div className={`task-card ${isFullScreen ? 'fullscreen-chart' : ''}`} style={{ position: 'relative', height: isFullScreen ? '100vh' : '400px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', borderLeft: 'none', marginBottom: '2rem' }}>
+      <div className={`task-card ${isFullScreen ? 'fullscreen-chart' : ''}`} style={{ position: 'relative', height: isFullScreen ? '100vh' : '550px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', borderLeft: 'none', marginBottom: '2rem' }}>
         <button 
           onClick={() => setIsFullScreen(!isFullScreen)}
           style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, padding: '6px 12px', background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: 'var(--text-main)', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}

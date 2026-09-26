@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { Bell, Settings, Home, FileText, Target, Activity, Folder, Plus, Search } from 'lucide-react';
 import MapPage from './pages/Map';
 import ProfilePage from './pages/Profile';
@@ -9,14 +9,15 @@ import GoalsPage from './pages/Goals';
 import NewAnalysisPage from './pages/NewAnalysis';
 import './index.css';
 
-export default function App() {
+function AppContent() {
   const [date, setDate] = useState('2023-06-01');
   const [depth, setDepth] = useState('50');
   const [lat, setLat] = useState(15.0);
   const [lon, setLon] = useState(85.0);
+  const location = useLocation();
+  const pushDownRightColumn = location.pathname === '/profile' || location.pathname === '/validation';
 
   return (
-    <BrowserRouter>
       <div className="dashboard-container">
         {/* SIDEBAR */}
         <aside className="sidebar">
@@ -91,10 +92,10 @@ export default function App() {
               </div>
               
               <div style={{ padding: '1rem 0', display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
-                {['Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
                   <div key={day} style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{day}</div>
-                    <div style={{ fontWeight: 800, color: i === 3 ? 'var(--primary)' : 'var(--text-main)' }}>{23 + i}</div>
+                    <div style={{ fontWeight: 800, color: i === 5 ? 'var(--primary)' : 'var(--text-main)' }}>{21 + i}</div>
                   </div>
                 ))}
               </div>
@@ -105,21 +106,73 @@ export default function App() {
                 <div style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>Automated Job</div>
               </div>
 
-              <div style={{ borderLeft: '2px solid #EEF2FF', paddingLeft: '1rem' }}>
+              <div style={{ borderLeft: '2px solid #EEF2FF', paddingLeft: '1rem', marginBottom: '1rem' }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>14:30 PM</div>
                 <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.25rem' }}>Update ML Model</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Dev 2 Upload</div>
               </div>
 
-              <div className="promo-card">
-                <div style={{ fontSize: '3rem', margin: '0 auto' }}>👑</div>
-                <h3>Explore deeper ocean insights with Pro</h3>
-                <button className="promo-btn">Upgrade now</button>
+              <div style={{ borderLeft: '2px solid #EEF2FF', paddingLeft: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>18:00 PM</div>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.25rem' }}>Generate PDF Reports</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Daily Summary</div>
+              </div>
+
+              <div style={{ position: 'sticky', top: '2rem' }}>
+                <div className="task-card" style={{ marginTop: pushDownRightColumn ? '6rem' : '2rem', padding: '1.5rem', borderRadius: '16px', background: 'white', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02)' }}>
+                <div style={{ fontWeight: 800, marginBottom: '1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Activity size={16} color="var(--primary)" /> Inference Status
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>ConvNeXt-Tiny EOF</span>
+                  <span style={{ color: '#10B981', fontWeight: 600 }}>Online</span>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Latent Dimension</span>
+                  <span style={{ fontWeight: 600 }}>256</span>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Data Sync</span>
+                  <span style={{ fontWeight: 600 }}>Just now</span>
+                </div>
+              </div>
+
+              <div className="task-card" style={{ marginTop: '2rem', marginBottom: '1rem', padding: '1.5rem', borderRadius: '16px', background: '#F8F9FA', borderLeft: '4px solid var(--primary)' }}>
+                <div style={{ fontWeight: 800, marginBottom: '1rem', fontSize: '1rem', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Activity size={16} color="var(--primary)" /> Active Location
+                </div>
+                
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Latitude</label>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{lat.toFixed(2)}°N</span>
+                  </div>
+                  <input type="range" min="5" max="30" step="0.1" value={lat} onChange={(e) => setLat(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                </div>
+                
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Longitude</label>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{lon.toFixed(2)}°E</span>
+                  </div>
+                  <input type="range" min="45" max="105" step="0.1" value={lon} onChange={(e) => setLon(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                </div>
+                </div>
               </div>
             </div>
           </div>
         </main>
       </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
   );
 }

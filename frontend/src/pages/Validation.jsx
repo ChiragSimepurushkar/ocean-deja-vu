@@ -31,7 +31,7 @@ export default function ValidationPage() {
         </div>
       </div>
 
-      <div className={`task-card ${isFullScreen1 ? 'fullscreen-chart' : ''}`} style={{ position: 'relative', height: isFullScreen1 ? '100vh' : '400px', padding: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: 'none', marginBottom: '2rem' }}>
+      <div className={`task-card ${isFullScreen1 ? 'fullscreen-chart' : ''}`} style={{ position: 'relative', height: isFullScreen1 ? '100vh' : '500px', padding: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: 'none', marginBottom: '2rem' }}>
         <button 
           onClick={() => setIsFullScreen1(!isFullScreen1)}
           style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, padding: '6px 12px', background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: 'var(--text-main)', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
@@ -74,7 +74,7 @@ export default function ValidationPage() {
         />
       </div>
       
-      <div className={`task-card ${isFullScreen2 ? 'fullscreen-chart' : ''}`} style={{ position: 'relative', height: isFullScreen2 ? '100vh' : '400px', padding: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: 'none', marginBottom: '2rem' }}>
+      <div className={`task-card ${isFullScreen2 ? 'fullscreen-chart' : ''}`} style={{ position: 'relative', height: isFullScreen2 ? '100vh' : '500px', padding: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: 'none', marginBottom: '2rem' }}>
         <button 
           onClick={() => setIsFullScreen2(!isFullScreen2)}
           style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, padding: '6px 12px', background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: 'var(--text-main)', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
