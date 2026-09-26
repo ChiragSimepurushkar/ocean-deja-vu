@@ -1,0 +1,33 @@
+# configs/model.yaml
+encoder:
+  backbone: "convnext_tiny"
+  pretrained_imagenet: false
+  embed_dim: 128
+  patch_size: 1
+
+mae:
+  mask_ratio: 0.50
+  channel_drop_prob: 0.20
+  decoder_dim: 256
+
+decoder:
+  eof_modes: 8
+  hidden: [512, 256]
+  dropout: 0.10
+
+baselines:
+  unet:
+    in_channels: 15
+    out_channels: 15
+    init_features: 32
+  linear:
+    fit_intercept: true
+    alpha: 1.0
+
+retrieval:
+  k: 8
+  seasonal_window_days: 45
+  blend_weight: 0.30
+
+uncertainty:
+  conformal_alpha: 0.10

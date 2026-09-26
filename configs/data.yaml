@@ -1,0 +1,96 @@
+# configs/data.yaml
+domain:
+  name: "bay_of_bengal_pilot"
+  lat: [5.0, 25.0]
+  lon: [80.0, 100.0]
+  res: 0.25
+  nlat: 80
+  nlon: 80
+
+# Alternative full domain configuration:
+# domain:
+#   name: "north_indian_ocean"
+#   lat: [5.0, 30.0]
+#   lon: [45.0, 105.0]
+#   res: 0.25
+#   nlat: 100
+#   nlon: 240
+
+depths: [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
+
+channels:
+  observation:
+    sst:
+      source: "ostia"
+      variable: "analysed_sst"
+      unit: "celsius"
+      anomaly: true
+    sss:
+      source: "smap_smos"
+      variable: "sos"
+      unit: "psu"
+      anomaly: false
+    ssh:
+      source: "duacs"
+      variable: "sla"
+      unit: "meters"
+      anomaly: true
+    uo:
+      source: "oscar"
+      variable: "uo"
+      unit: "m/s"
+      anomaly: false
+    vo:
+      source: "oscar"
+      variable: "vo"
+      unit: "m/s"
+      anomaly: false
+    uw:
+      source: "ccmp"
+      variable: "uw"
+      unit: "m/s"
+      anomaly: false
+    vw:
+      source: "ccmp"
+      variable: "vw"
+      unit: "m/s"
+      anomaly: false
+  derived:
+    - curl_tau
+    - div_uv
+    - sst_grad_x
+    - sst_grad_y
+  coordinates:
+    - lat_sin
+    - lon_cos
+    - doy_sin
+    - doy_cos
+
+eof:
+  n_modes: 8
+  min_variance_explained: 0.95
+
+n_surface_channels: 15  # 7 obs + 4 derived + 4 coord
+n_depths: 15
+
+splits:
+  pilot:
+    start_date: "2023-05-01"
+    end_date: "2023-06-30"
+    train_ratio: 0.70
+    val_ratio: 0.15
+    test_ratio: 0.15
+  multi_year:
+    train_years: [2019, 2020, 2021]
+    val_years: [2022]
+    test_years: [2023]
+  argo_holdout_boxes:
+    - [10.0, 20.0, 85.0, 95.0]  # [lat_min, lat_max, lon_min, lon_max] in Bay of Bengal
+
+paths:
+  raw: "data/raw"
+  processed: "data/processed"
+  cache: "data/cache"
+  zarr_store: "data/processed/ocean_odv.zarr"
+  stats_file: "data/cache/channel_stats.json"
+  eof_file: "data/cache/eof_model.pkl"

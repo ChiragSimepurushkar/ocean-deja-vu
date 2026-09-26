@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Large oceanographic data and checkpoints (per plan)
+data/raw/*.nc
+data/raw/*.csv
+data/processed/*.zarr
+data/cache/*.npy
+data/cache/*.pkl
+data/cache/*.index
+data/cache/climatologies/
+checkpoints/
+
+# Virtual environment & IDE
+.venv/
+env/
+.env
+.DS_Store
+.idea/
+.vscode/

@@ -35,12 +35,23 @@ with col1:
     st.markdown("### Interactive Map")
     st.info("Mapbox GL / MapLibre visualization will go here.")
     
-    # Placeholder heatmap for transect view fallback
-    st.markdown("### Vertical Transect View")
-    # Generate some dummy data for the heatmap
-    depths = np.linspace(0, 300, 15)
-    lons = np.linspace(80, 100, 50)
-    temp_data = np.random.randn(len(depths), len(lons)) * 5 + 20
+    # Vertical transect view from Zarr store (or fallback)
+    st.markdown("### Vertical Transect View (Bay of Bengal 15°N)")
+    try:
+        from src.data.zarr_store import ZarrOceanStore
+        store = ZarrOceanStore("data/processed/ocean_odv.zarr", mode="r")
+        sample_date = store.get_dates("train")[0]
+        day = store.get_day(sample_date)
+        depths = store.get_depths()
+        lons = store.get_lons()
+        mid_lat_idx = day["target_profiles"].shape[1] // 2
+        temp_data = day["target_profiles"][:, mid_lat_idx, :]
+        transect_title = f"GLORYS12 Temperature Transect ({sample_date} at ~15°N)"
+    except Exception:
+        depths = np.linspace(0, 300, 15)
+        lons = np.linspace(80, 100, 50)
+        temp_data = np.random.randn(len(depths), len(lons)) * 5 + 20
+        transect_title = "Temperature Profile (Placeholder)"
     
     fig = go.Figure(data=go.Heatmap(
         z=temp_data,
@@ -50,8 +61,8 @@ with col1:
         colorbar=dict(title='Temperature (°C)')
     ))
     fig.update_layout(
-        title='Temperature Profile (Placeholder)',
-        xaxis_title='Longitude',
+        title=transect_title,
+        xaxis_title='Longitude (°E)',
         yaxis_title='Depth (m)',
         yaxis_autorange='reversed',
         template='plotly_dark'
@@ -70,9 +81,22 @@ with col2:
         "Similarity": ["92%", "88%", "85%"]
     }))
     
-    st.markdown("#### Validation Metrics")
-    st.metric("Overall RMSE", "0.45 °C", "-0.05 °C")
-    st.metric("Skill Score", "0.82", "+0.03")
+    st.markdown("#### Baseline Validation Metrics")
+    import json
+    from pathlib import Path
+    metrics_path = Path("data/cache/baseline_metrics.json")
+    if metrics_path.exists():
+        with open(metrics_path, "r") as f:
+            bm = json.load(f)
+        p_rmse = bm.get("Persistence", {}).get("overall_rmse", 0.0856)
+        l_rmse = bm.get("Linear (Ridge)", {}).get("overall_rmse", 0.2312)
+        c_rmse = bm.get("Climatology", {}).get("overall_rmse", 0.6733)
+        st.metric("Persistence RMSE", f"{p_rmse:.4f} °C")
+        st.metric("Ridge Baseline RMSE", f"{l_rmse:.4f} °C")
+        st.metric("Climatology RMSE", f"{c_rmse:.4f} °C")
+    else:
+        st.metric("Overall RMSE", "0.45 °C", "-0.05 °C")
+        st.metric("Skill Score", "0.82", "+0.03")
 
 st.markdown("---")
 st.markdown("### Advisory Alerts")

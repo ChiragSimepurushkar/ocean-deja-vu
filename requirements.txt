@@ -1,7 +1,32 @@
-streamlit
-pandas
+# Core ML and Scientific Stack
+torch
+torchvision
 numpy
-plotly
-requests
+pandas
+scipy
+scikit-learn
+
+# Ocean Data & Regridding
+xarray
+zarr>=3.0.0
+netCDF4
+pooch
+copernicusmarine
+earthaccess
+argopy
+erddapy<3.0
+
+# Configuration & Utilities
+pyyaml
+rich
+pytest
+
+# API & Serving
 fastapi
 uvicorn
+httpx
+requests
+
+# Visualization & Demo
+streamlit
+plotly
