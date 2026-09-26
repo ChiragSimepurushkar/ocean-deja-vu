@@ -104,6 +104,9 @@ def compute_thermocline_depth(profile: np.ndarray) -> float:
     return float(depths[np.argmax(grad)])
 
 
+compute_thermocline = compute_thermocline_depth
+
+
 def compute_d20(profile: np.ndarray) -> float:
     """
     Depth of the 20°C isotherm.

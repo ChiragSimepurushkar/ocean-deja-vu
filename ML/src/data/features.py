@@ -24,7 +24,13 @@ from __future__ import annotations
 from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
-import xarray as xr
+
+try:
+    import xarray as xr
+    HAS_XARRAY = True
+except ImportError:
+    xr = None
+    HAS_XARRAY = False
 
 # Conversion constants
 R_EARTH = 6_371_000.0  # meters

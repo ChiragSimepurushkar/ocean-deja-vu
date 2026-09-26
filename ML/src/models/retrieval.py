@@ -204,11 +204,6 @@ class AnalogRetriever:
         sel_ids = self._seasonal_ids(query_doy)
 
         if len(sel_ids) >= self.k:
-            # Search only the seasonal subset using an IDSelectorBatch
-            sel = faiss.IDSelectorBatch(np.array(sel_ids, dtype=np.int64))
-            params = faiss.SearchParametersIVF()
-            params.sel = sel
-            # For IndexFlatIP we use a simpler approach: extract and search manually
             D_scores, I_ids = self._restricted_search(z_q, sel_ids)
         else:
             D_scores, I_ids = self.index.search(z_q, self.k)
