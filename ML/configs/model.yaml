@@ -1,0 +1,23 @@
+encoder:
+  backbone: convnext_tiny    # timm model name
+  pretrained_imagenet: false  # train from scratch on ocean data
+  embed_dim: 128
+  patch_size: 1               # pixel-level (no spatial pooling before decoder)
+
+mae:
+  mask_ratio: 0.50
+  channel_drop_prob: 0.20     # probability of dropping an entire obs channel
+  decoder_dim: 256
+
+decoder:
+  eof_modes: 40               # predict EOF coefficients, not raw depths
+  hidden: [512, 256]
+  dropout: 0.10
+
+retrieval:
+  k: 8
+  seasonal_window_days: 45
+  blend_weight: 0.30          # decoder vs analog blend weight (tuned on val set)
+
+uncertainty:
+  conformal_alpha: 0.10       # target 90% coverage

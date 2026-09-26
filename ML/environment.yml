@@ -1,0 +1,22 @@
+# Ocean Deja Vu — Conda Environment
+name: odv
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pip
+
+  # System-level (must be conda for binary compatibility)
+  - xesmf=0.8.7       # regridding (requires ESMF)
+  - esmf=8.6.0
+
+  # PyTorch (with CUDA 12.1; change cu121 → cpu for CPU-only)
+  - pytorch::pytorch>=2.1.0
+  - pytorch::torchvision>=0.16.0
+
+  - pip:
+    - -r requirements.txt

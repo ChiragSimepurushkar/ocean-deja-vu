@@ -1,0 +1,46 @@
+# ── Build outputs ────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Data (too large for git) ─────────────────────────────────────────────────
+data/raw/
+data/processed/
+data/cache/
+
+# ── Model checkpoints ────────────────────────────────────────────────────────
+checkpoints/
+
+# ── Credentials (NEVER commit these) ─────────────────────────────────────────
+.env
+*.env
+credentials*.json
+*.token
+
+# ── IDE / OS ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# ── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── W&B ──────────────────────────────────────────────────────────────────────
+wandb/
+
+# ── Ruff / pre-commit caches ──────────────────────────────────────────────────
+.ruff_cache/
+.pre-commit-cache/
+
+# ── Test coverage ─────────────────────────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/

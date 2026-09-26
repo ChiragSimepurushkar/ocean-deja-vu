@@ -1,0 +1,42 @@
+seed: 42
+
+pretrain:
+  epochs: 20
+  batch_size: 8
+  lr: 1.0e-4
+  weight_decay: 0.05
+  lr_scheduler: cosine
+  grad_clip: 1.0
+  num_workers: 4
+  checkpoint_dir: checkpoints/pretrain
+
+decoder_stage1:          # frozen encoder, train decoder only
+  epochs: 50
+  batch_size: 8
+  lr: 5.0e-4
+  weight_decay: 0.01
+  lr_scheduler: cosine
+  grad_clip: 1.0
+  num_workers: 4
+  checkpoint_dir: checkpoints/stage1
+
+decoder_stage2:          # end-to-end fine-tune
+  epochs: 30
+  batch_size: 4
+  lr: 1.0e-5
+  weight_decay: 0.01
+  lr_scheduler: cosine
+  grad_clip: 1.0
+  num_workers: 4
+  checkpoint_dir: checkpoints/stage2
+
+loss_weights:
+  eof:    1.0
+  phys:   1.0
+  smooth: 0.10
+  steric: 0.05
+
+wandb:
+  project: ocean-deja-vu
+  entity: null             # set to your W&B username
+  log_images: true
