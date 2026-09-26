@@ -69,6 +69,9 @@ class InferenceResult:
     uhc:              float       # upper ocean heat content (GJ/m²)
 
 
+SinglePointResult = InferenceResult
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Diagnostics
 # ──────────────────────────────────────────────────────────────────────────────
