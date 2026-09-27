@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Navigation2 } from 'lucide-react';
+import { Clock, Navigation2, Film } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Plot from 'react-plotly.js';
 import { getField, getAdvisory } from '../api';
@@ -53,7 +53,7 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
       } else {
         setLat(point.y);
         setLon(point.x);
-        navigate('/profile');
+        navigate('/deepdive');
       }
     }
   };
@@ -110,6 +110,14 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
           >
             <Navigation2 size={16} />
             {viewMode === '2d' ? (transectStart && transectEnd ? 'Show 3D Curtain' : 'Draw 3D Transect') : 'Back to 2D Map'}
+          </button>
+          
+          <button 
+            onClick={() => navigate('/cinematic')}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: '#F59E0B', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: 'white', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
+          >
+            <Film size={16} />
+            Launch Cinematic View
           </button>
           
           {transectStart && viewMode === '2d' && (

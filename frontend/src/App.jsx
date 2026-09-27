@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router
 import { Bell, Settings, Home, FileText, Target, Activity, Folder, Plus, Search } from 'lucide-react';
 import MapPage from './pages/Map';
 import ProfilePage from './pages/Profile';
+import DeepDivePage from './pages/DeepDive';
+import CinematicViewPage from './pages/CinematicView';
 import ValidationPage from './pages/Validation';
 import NotesPage from './pages/Notes';
 import GoalsPage from './pages/Goals';
@@ -77,6 +79,8 @@ function AppContent() {
               <Routes>
                 <Route path="/" element={<MapPage date={date} setDate={setDate} depth={depth} setDepth={setDepth} lat={lat} setLat={setLat} lon={lon} setLon={setLon} />} />
                 <Route path="/profile" element={<ProfilePage date={date} lat={lat} lon={lon} />} />
+                <Route path="/deepdive" element={<DeepDivePage date={date} lat={lat} lon={lon} />} />
+                <Route path="/cinematic" element={<CinematicViewPage date={date} lat={lat} lon={lon} />} />
                 <Route path="/validation" element={<ValidationPage />} />
                 <Route path="/notes" element={<NotesPage />} />
                 <Route path="/goals" element={<GoalsPage />} />

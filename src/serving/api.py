@@ -20,8 +20,31 @@ DEPTHS = [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
 
 class DummyCache:
     def load_field(self, date, var):
-        # 100x240 dummy data
-        return np.random.randn(100, 240) * 5 + 25
+        depth = 0
+        if "temp_" in var and "m" in var:
+            try:
+                depth = int(var.split("_")[1].replace("m", ""))
+            except:
+                pass
+                
+        lats_grid = np.linspace(5.0, 30.0, 100)[:, None]
+        lons_grid = np.linspace(45.0, 105.0, 240)[None, :]
+        
+        # Temperature is warmer near the equator (low lat)
+        lat_effect = (30.0 - lats_grid) / 25.0 * 5.0
+        
+        # Exponential decay of temperature with depth (thermocline)
+        depth_effect = 22.0 * np.exp(-depth / 200.0)
+        
+        base_temp = 5.0 + depth_effect + lat_effect
+        
+        # Add some smooth spatial variation
+        spatial_pattern = np.sin(lons_grid / 5.0) * np.cos(lats_grid / 5.0) * 1.5
+        
+        # Add a tiny bit of random noise for realism
+        noise = np.random.randn(100, 240) * 0.2
+        
+        return base_temp + spatial_pattern + noise
 
 cache = DummyCache()
 lats = np.linspace(5.0, 30.0, 100)
