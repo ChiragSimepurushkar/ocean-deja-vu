@@ -197,10 +197,10 @@ class InferencePipeline:
         eof_path:     str,
         retriever_cache: str = "data/cache",
         conformal_path:  str = "data/cache/conformal.json",
-        zarr_store_path: str = "data/processed/ocean_odv.zarr",
+        zarr_store_path: str = "../Dataset",
         in_channels:  int = 15,
         embed_dim:    int = 128,
-        n_modes:      int = 40,
+        n_modes:      int = 8,
         blend_weight: float = 0.30,
     ) -> "InferencePipeline":
         with open(eof_path, "rb") as f:
@@ -230,11 +230,11 @@ class InferencePipeline:
         if cpath.exists():
             calibrator = ConformalCalibrator.load(str(cpath))
 
-        # Zarr store
+        # Zarr v3 store (uses custom reader for Python 3.10 compat)
         zarr_store = None
         try:
-            import zarr
-            zarr_store = zarr.open(zarr_store_path, "r")
+            from src.data.zarr3_reader import Zarr3Store
+            zarr_store = Zarr3Store(zarr_store_path)
         except Exception:
             pass
 
@@ -371,4 +371,4 @@ class InferencePipeline:
     def _grid_indices(lat: float, lon: float) -> tuple[int, int]:
         ilat = int(round((lat - GRID_LAT0) / GRID_RES))
         ilon = int(round((lon - GRID_LON0) / GRID_RES))
-        return np.clip(ilat, 0, 99), np.clip(ilon, 0, 239)
+        return np.clip(ilat, 0, 100), np.clip(ilon, 0, 240)

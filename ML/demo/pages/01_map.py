@@ -12,7 +12,8 @@ import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.serving.cache_warmer import generate_mock_field, load_cached_or_mock_field if hasattr(__import__("src.serving.api", fromlist=["load_cached_or_mock_field"]), "load_cached_or_mock_field") else generate_mock_field
+from src.serving.cache_warmer import generate_mock_field
+from src.serving.api import load_cached_or_mock_field
 from src.serving.inference import DEPTHS, compute_d20, compute_mld, compute_thermocline, compute_uhc
 
 st.set_page_config(page_title="Spatial Explorer | Ocean Deja Vu", layout="wide", page_icon="🗺️")
