@@ -35,6 +35,14 @@ function generateOrbitFrames(steps) {
 
 export default function CinematicView({ lat, lon, date }) {
   const navigate = useNavigate();
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialLat = parseFloat(searchParams.get('lat') || 15);
+  const initialLon = parseFloat(searchParams.get('lon') || 65);
+  const selectedDate = searchParams.get('date') || '2023-01-01';
+
+  const [centerLat, setCenterLat] = useState(initialLat);
+  const [centerLon, setCenterLon] = useState(initialLon);
+
   const [layersData, setLayersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -56,7 +64,7 @@ export default function CinematicView({ lat, lon, date }) {
       const fetchedLayers = await Promise.all(
         DEPTHS.map(async d => {
           try {
-             return await getField(date || '2023-01-01', d);
+             return await getField(selectedDate, d);
           } catch (e) {
              console.error(e);
              return null;
@@ -136,8 +144,24 @@ export default function CinematicView({ lat, lon, date }) {
     );
   }
 
+  // Slice data around centerLat / centerLon (10 degree window)
+  const windowSize = 5; // +/- 5 degrees
+  const slicedLayersData = layersData.map(layer => {
+    if (!layer) return null;
+    const latIndices = layer.lat.map((l, i) => Math.abs(l - centerLat) <= windowSize ? i : -1).filter(i => i !== -1);
+    const lonIndices = layer.lon.map((l, i) => Math.abs(l - centerLon) <= windowSize ? i : -1).filter(i => i !== -1);
+    
+    if (latIndices.length === 0 || lonIndices.length === 0) return null;
+
+    const slicedLat = latIndices.map(i => layer.lat[i]);
+    const slicedLon = lonIndices.map(i => layer.lon[i]);
+    const slicedData = latIndices.map(y => lonIndices.map(x => layer.data[y][x]));
+
+    return { ...layer, lat: slicedLat, lon: slicedLon, data: slicedData };
+  });
+
   const tempTraces = DEPTHS.map((depth, index) => {
-    const layer = layersData[index];
+    const layer = slicedLayersData[index];
     if (!layer) return null;
     
     // Scale down depth so 1000m is -5 in Plotly units
@@ -164,7 +188,7 @@ export default function CinematicView({ lat, lon, date }) {
 
   // Fake Isosurface for 20C
   let isoX = [], isoY = [], isoZ = [], isoVal = [];
-  layersData.forEach((layer, i) => {
+  slicedLayersData.forEach((layer, i) => {
     if(!layer) return;
     layer.data.forEach((row, yIdx) => {
       row.forEach((val, xIdx) => {
@@ -199,8 +223,8 @@ export default function CinematicView({ lat, lon, date }) {
 
   let salTrace = null;
   // Salinity 0m surface (Fake data based on 0m temp)
-  if (layersData[0]) {
-    const layer = layersData[0];
+  if (slicedLayersData[0]) {
+    const layer = slicedLayersData[0];
     const salinityData = layer.data.map(row => row.map(val => val !== null && val !== undefined ? 32 + (val / 32) * 5 : null)); // Maps roughly to 32-37 PSU
     salTrace = {
       type: 'surface',
@@ -222,8 +246,8 @@ export default function CinematicView({ lat, lon, date }) {
 
   let curTrace = null;
   // Currents 0m surface (Fake data based on 0m temp)
-  if (layersData[0]) {
-    const layer = layersData[0];
+  if (slicedLayersData[0]) {
+    const layer = slicedLayersData[0];
     const currentsData = layer.data.map(row => row.map(val => val !== null && val !== undefined ? (val / 32) * 2 : null)); // Maps roughly to 0-2 m/s
     curTrace = {
       type: 'surface',
@@ -245,11 +269,11 @@ export default function CinematicView({ lat, lon, date }) {
 
   let bboxTrace = null;
   // Bounding Box (Surroundings)
-  if (layersData[0]) {
-    const minLon = layersData[0].lon[0];
-    const maxLon = layersData[0].lon[layersData[0].lon.length - 1];
-    const minLat = layersData[0].lat[0];
-    const maxLat = layersData[0].lat[layersData[0].lat.length - 1];
+  if (slicedLayersData[0]) {
+    const minLon = slicedLayersData[0].lon[0];
+    const maxLon = slicedLayersData[0].lon[slicedLayersData[0].lon.length - 1];
+    const minLat = slicedLayersData[0].lat[0];
+    const maxLat = slicedLayersData[0].lat[slicedLayersData[0].lat.length - 1];
     const zMin = -1000 / 200; // -5
     const zMax = 0;
 
@@ -288,11 +312,11 @@ export default function CinematicView({ lat, lon, date }) {
 
   // Surrounding Context (Extended Chunk Data)
   let surroundingTrace = null;
-  if (layersData[0]) {
-    const minLon = layersData[0].lon[0] - 10;
-    const maxLon = layersData[0].lon[layersData[0].lon.length - 1] + 10;
-    const minLat = layersData[0].lat[0] - 10;
-    const maxLat = layersData[0].lat[layersData[0].lat.length - 1] + 10;
+  if (slicedLayersData[0]) {
+    const minLon = slicedLayersData[0].lon[0] - 10;
+    const maxLon = slicedLayersData[0].lon[slicedLayersData[0].lon.length - 1] + 10;
+    const minLat = slicedLayersData[0].lat[0] - 10;
+    const maxLat = slicedLayersData[0].lat[slicedLayersData[0].lat.length - 1] + 10;
     const zMin = -1000 / 200;
     
     // Create an extended sea floor plane slightly larger than the domain
@@ -319,6 +343,7 @@ export default function CinematicView({ lat, lon, date }) {
     paper_bgcolor: 'transparent',
     plot_bgcolor: 'transparent',
     scene: {
+      aspectratio: { x: 2, y: 2, z: 1 },
       xaxis: { title: 'Longitude', color: '#64748b', gridcolor: '#e2e8f0', showbackground: false },
       yaxis: { title: 'Latitude', color: '#64748b', gridcolor: '#e2e8f0', showbackground: false },
       zaxis: { title: 'Depth', color: '#64748b', gridcolor: '#e2e8f0', showbackground: false },
@@ -379,6 +404,14 @@ export default function CinematicView({ lat, lon, date }) {
                   {btn.label}
                 </button>
               ))}
+            </div>
+            {/* Data Panning Controls */}
+            <div style={{ display: 'flex', gap: '5px', marginLeft: '15px', background: '#e0f2fe', padding: '4px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0284c7', alignSelf: 'center', padding: '0 8px' }}>Pan Ocean:</span>
+              <button onClick={() => setCenterLat(l => Math.min(30, l + 5))} style={{ padding: '6px 12px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1' }}>North</button>
+              <button onClick={() => setCenterLat(l => Math.max(5, l - 5))} style={{ padding: '6px 12px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1' }}>South</button>
+              <button onClick={() => setCenterLon(l => Math.max(45, l - 5))} style={{ padding: '6px 12px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1' }}>West</button>
+              <button onClick={() => setCenterLon(l => Math.min(105, l + 5))} style={{ padding: '6px 12px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1' }}>East</button>
             </div>
           </div>
         </div>
