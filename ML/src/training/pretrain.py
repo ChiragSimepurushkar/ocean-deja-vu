@@ -221,14 +221,14 @@ def main(args: argparse.Namespace) -> None:
 
 def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Ocean Deja Vu — MAE Pretraining")
-    p.add_argument("--store_path", type=str, default="data/processed/ocean_odv.zarr")
+    p.add_argument("--store_path", type=str, default="../Dataset")
     p.add_argument("--in_channels", type=int, default=15)
     p.add_argument("--embed_dim", type=int, default=128)
     p.add_argument("--mask_ratio", type=float, default=0.50)
     p.add_argument("--channel_drop_prob", type=float, default=0.20)
     p.add_argument("--decoder_dim", type=int, default=256)
-    p.add_argument("--target_h", type=int, default=100)
-    p.add_argument("--target_w", type=int, default=240)
+    p.add_argument("--target_h", type=int, default=101)
+    p.add_argument("--target_w", type=int, default=241)
     p.add_argument("--epochs", type=int, default=20)
     p.add_argument("--batch_size", type=int, default=8)
     p.add_argument("--lr", type=float, default=1e-4)

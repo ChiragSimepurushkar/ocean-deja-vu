@@ -62,7 +62,7 @@ class EOFDecoder(nn.Module):
     dropout : float
         Dropout probability in the MLP.
     target_h, target_w : int
-        Full-resolution domain size (100, 240).
+        Full-resolution domain size (101, 241).
 
     Forward
     -------
@@ -76,8 +76,8 @@ class EOFDecoder(nn.Module):
         n_modes: int = 40,
         hidden: list[int] | None = None,
         dropout: float = 0.10,
-        target_h: int = 100,
-        target_w: int = 240,
+        target_h: int = 101,
+        target_w: int = 241,
     ) -> None:
         super().__init__()
         self.n_modes = n_modes

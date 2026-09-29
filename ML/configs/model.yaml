@@ -10,7 +10,7 @@ mae:
   decoder_dim: 256
 
 decoder:
-  eof_modes: 40               # predict EOF coefficients, not raw depths
+  eof_modes: 8                # predict EOF coefficients (8 modes from data pipeline)
   hidden: [512, 256]
   dropout: 0.10
 

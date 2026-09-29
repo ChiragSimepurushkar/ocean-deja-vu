@@ -4,7 +4,7 @@
 # Run from repo root after pretrain.sh completes.
 set -euo pipefail
 
-STORE="data/processed/ocean_odv.zarr"
+STORE="${STORE:-../Dataset}"
 EOF_PATH="data/cache/eof.pkl"
 ENC_CKPT="checkpoints/pretrain/encoder_pretrained.ckpt"
 

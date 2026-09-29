@@ -97,10 +97,14 @@ class ReconstructionLightning(L.LightningModule):
     # Stage management
     # ------------------------------------------------------------------
 
-    def on_train_start(self) -> None:
+    def setup(self, stage: str = None) -> None:
+        """Freeze/unfreeze encoder BEFORE configure_optimizers is called."""
         if self.stage == 1:
             self.encoder.freeze()
-            print("[supervised] Stage 1: encoder frozen, training decoder only.")
+            trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
+            frozen = sum(p.numel() for p in self.parameters() if not p.requires_grad)
+            print(f"[supervised] Stage 1: encoder frozen. "
+                  f"Trainable: {trainable:,}, Frozen: {frozen:,}")
         else:
             self.encoder.unfreeze()
             print("[supervised] Stage 2: end-to-end fine-tune, all params unfrozen.")
@@ -337,7 +341,7 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--encoder_ckpt",  type=str, default="checkpoints/pretrain/encoder_pretrained.ckpt")
     p.add_argument("--model_ckpt",    type=str, default="checkpoints/stage1/best.ckpt")
     p.add_argument("--eof_path",      type=str, default="data/cache/eof.pkl")
-    p.add_argument("--store_path",    type=str, default="data/processed/ocean_odv.zarr")
+    p.add_argument("--store_path",    type=str, default="../Dataset")
     p.add_argument("--epochs",        type=int, default=50)
     p.add_argument("--batch_size",    type=int, default=8)
     p.add_argument("--num_workers",   type=int, default=4)
