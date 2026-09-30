@@ -7,13 +7,16 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Proxy all API requests to the FastAPI backend
-      '/field':       { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/profile':     { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/diagnostics': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/advisory':    { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/transect':    { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/health':      { target: 'http://127.0.0.1:8000', changeOrigin: true },
+      '/field': 'http://127.0.0.1:8000',
+      '/profile': 'http://127.0.0.1:8000',
+      '/diagnostics': 'http://127.0.0.1:8000',
+      '/advisory': 'http://127.0.0.1:8000',
+      '/transect': 'http://127.0.0.1:8000',
+      '/health': 'http://127.0.0.1:8000',
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
 })
