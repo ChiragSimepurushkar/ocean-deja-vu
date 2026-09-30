@@ -1,13 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
 
 :root {
-  --bg-app: #E6E3FF; /* Soft lavender background */
+  /* DARK MODE (Default) */
+  --bg-app: #0F172A;
+  --bg-panel: #020617;
+  --text-main: #F8FAFC;
+  --text-muted: #94A3B8;
+  --primary: #38BDF8; 
+  --primary-light: #0369A1;
+  --sidebar-hover: #1E293B;
+  --chart-bg: #020617; 
+  --border: #334155;
+  --bg-input: #1E293B;
+}
+
+:root[data-theme="light"] {
+  /* LIGHT MODE */
+  --bg-app: #E6E3FF;
   --bg-panel: #FFFFFF;
   --text-main: #1C1D21;
   --text-muted: #8B8C9A;
-  --primary: #4F46E5; /* Indigo */
+  --primary: #4F46E5;
   --primary-light: #EEF2FF;
   --sidebar-hover: #F8F9FA;
+  --chart-bg: #FFFFFF;
+  --border: #E2E8F0;
+  --bg-input: #F8F9FA;
 }
 
 html {
@@ -43,7 +61,7 @@ body {
 .sidebar {
   width: 260px;
   padding: 2rem 1.5rem;
-  border-right: 1px solid #F1F1F5;
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -145,7 +163,7 @@ body {
 .search-bar {
   display: flex;
   align-items: center;
-  background-color: #F8F9FA;
+  background-color: var(--bg-input);
   padding: 0.75rem 1.25rem;
   border-radius: 12px;
   width: 300px;
@@ -224,8 +242,8 @@ body {
 }
 
 .task-card {
-  background: #FFFFFF;
-  border: 1px solid #F1F1F5;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1.5rem;
   min-width: 280px;
@@ -264,8 +282,8 @@ body {
 .list-item {
   display: flex;
   align-items: center;
-  background: white;
-  border: 1px solid #F1F1F5;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
   padding: 1rem 1.5rem;
   border-radius: 12px;
   margin-bottom: 0.75rem;
@@ -300,9 +318,9 @@ body {
 /* Right Column (Calendar/Events) */
 .right-column {
   flex: 1;
-  background: #FAFAFB;
+  background: var(--bg-app);
   padding: 1.5rem 2rem;
-  border-left: 1px solid #F1F1F5;
+  border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
 }
@@ -368,7 +386,7 @@ body {
   width: 100vw !important;
   height: 100vh !important;
   z-index: 9999 !important;
-  background: white;
+  background: var(--bg-panel);
   border-radius: 0 !important;
   margin: 0 !important;
 }

@@ -3,15 +3,13 @@ import DeckGL from '@deck.gl/react';
 import { PointCloudLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { useOceanDataset } from '../hooks/useOceanDataset';
 
 // Generate dense point cloud to form a voxel "curtain" with flowing animation
-const generateCurtainData = (start, end, timeOffset) => {
+const generateCurtainData = (start, end, timeOffset, oceanData) => {
   const points = [];
   const steps = 250; // High density horizontal segments
-  const depths = [];
-  for (let d = 0; d <= 1000; d += 15) {
-    depths.push(d);
-  }
+  const depths = [0,5,10,20,30,50,75,100,125,150,200,300,500,700,1000];
   
   const zExaggeration = 200; // Stretch the Z axis (depth)
 
@@ -20,13 +18,23 @@ const generateCurtainData = (start, end, timeOffset) => {
     const lon = start[0] + (end[0] - start[0]) * fraction;
     const lat = start[1] + (end[1] - start[1]) * fraction;
     
-    depths.forEach(depth => {
-      const baseTemp = 25 - (depth / 1000) * 22;
+    depths.forEach((depth, dIdx) => {
+      let temp = 25 - (depth / 1000) * 22; // fallback base temp
+      if (oceanData && oceanData.reconstructed) {
+         const latIdx = Math.max(0, Math.min(99, Math.round((lat - 5) / 0.25)));
+         const lonIdx = Math.max(0, Math.min(239, Math.round((lon - 45) / 0.25)));
+         
+         const tData = oceanData.reconstructed.temperature[dIdx];
+         if (tData && tData[latIdx] && tData[latIdx][lonIdx] !== null) {
+            temp = tData[latIdx][lonIdx];
+         }
+      }
+      
       // Subtracting timeOffset from the fraction makes the waves "flow" horizontally
-      const temp = baseTemp + Math.sin((fraction * Math.PI * 4) - timeOffset) * 2;
+      temp = temp + Math.sin((fraction * Math.PI * 4) - timeOffset) * 1.5;
       
       points.push({
-        position: [lon, lat, -depth * zExaggeration],
+        position: [lon, lat, -depth * zExaggeration / 1000 * 5], // adjust depth scaling for visual
         temperature: temp,
         depth: depth
       });
@@ -68,8 +76,9 @@ const satelliteStyle = {
   ]
 };
 
-export default function CurtainView({ startPoint, endPoint }) {
+export default function CurtainView({ startPoint, endPoint, date }) {
   const [timeOffset, setTimeOffset] = useState(0);
+  const { data: oceanData } = useOceanDataset(date);
 
   // Animation loop for the flowing river effect
   useEffect(() => {
@@ -84,8 +93,8 @@ export default function CurtainView({ startPoint, endPoint }) {
 
   const data = useMemo(() => {
     if (!startPoint || !endPoint) return [];
-    return generateCurtainData(startPoint, endPoint, timeOffset);
-  }, [startPoint, endPoint, timeOffset]);
+    return generateCurtainData(startPoint, endPoint, timeOffset, oceanData);
+  }, [startPoint, endPoint, timeOffset, oceanData]);
 
   const layers = [
     new PointCloudLayer({

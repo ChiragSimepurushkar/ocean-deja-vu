@@ -7,6 +7,7 @@ import {
 import { Ocean3DScene } from '../components/3d/Ocean3DScene';
 import { ParallaxUnderwaterScene } from '../components/ParallaxUnderwaterScene';
 import { startAmbientOceanDrone, stopAmbientOceanDrone, updateUnderwaterDepthAcoustics } from '../utils/audio';
+import { useOceanDataset } from '../hooks/useOceanDataset';
 import './DeepDive.css';
 
 const OCEAN_ZONES = [
@@ -132,12 +133,46 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
     };
   }, [handleSliderInteraction]);
 
+  // Fetch real dataset
+  const { data: oceanData, loading } = useOceanDataset(date);
+
   // Telemetry calculations
   const zone = getCurrentZone(currentDepth);
-  const sst = 29.2 - Math.abs(lat - 12) * 0.25;
-  const tempC = Math.max(2.1, sst - Math.pow(currentDepth / 1000, 0.42) * (sst - 2.1));
+  
+  let sst = 29.2;
+  let tempC = Math.max(2.1, sst - Math.pow(currentDepth / 1000, 0.42) * (sst - 2.1));
+  let salinityPsu = (33.8 + Math.min(1.8, (currentDepth / 400) * 1.4));
+  let curMps = 0;
+  
+  if (oceanData && oceanData.reconstructed) {
+    const latIdx = Math.max(0, Math.min(99, Math.round((lat - 5) / 0.25)));
+    const lonIdx = Math.max(0, Math.min(239, Math.round((lon - 45) / 0.25)));
+    const depths = oceanData.depths || [0,5,10,20,30,50,75,100,125,150,200,300,500,700,1000];
+    
+    // Find closest depth index
+    let closestDIdx = 0;
+    let minDDiff = 9999;
+    depths.forEach((d, i) => {
+       if (Math.abs(d - currentDepth) < minDDiff) {
+          minDDiff = Math.abs(d - currentDepth);
+          closestDIdx = i;
+       }
+    });
+    
+    const tData = oceanData.reconstructed.temperature[closestDIdx];
+    const sData = oceanData.reconstructed.salinity[closestDIdx];
+    const cData = oceanData.reconstructed.currents[closestDIdx];
+    
+    if (oceanData.surface && oceanData.surface.sst && oceanData.surface.sst[latIdx]) {
+       sst = oceanData.surface.sst[latIdx][lonIdx] || sst;
+    }
+    
+    if (tData && tData[latIdx]) tempC = tData[latIdx][lonIdx] || tempC;
+    if (sData && sData[latIdx]) salinityPsu = sData[latIdx][lonIdx] || salinityPsu;
+    if (cData && cData[latIdx]) curMps = cData[latIdx][lonIdx] || curMps;
+  }
+
   const pressureAtm = (1.0 + currentDepth / 10.0).toFixed(1);
-  const salinityPsu = (33.8 + Math.min(1.8, (currentDepth / 400) * 1.4)).toFixed(2);
   const dissolvedO2 = currentDepth < 100 ? '4.8' : currentDepth < 400 ? '1.6' : '3.4';
   const irradiance = Math.max(0, Math.exp(-currentDepth / 32) * 100).toFixed(1);
   const soundSpeed = (1449.2 + 4.6 * tempC - 0.055 * tempC * tempC + 0.017 * currentDepth * 0.1).toFixed(0);
@@ -189,7 +224,7 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
         <div className="dd-top-right">
           <button
             onClick={() => setRenderMode(renderMode === '3d' ? '2d' : '3d')}
-            className={`dd-btn ${renderMode === '3d' ? 'dd-btn-active' : ''}`}
+            className={`dd-btn tour-2d-toggle ${renderMode === '3d' ? 'dd-btn-active' : ''}`}
           >
             {renderMode === '3d' ? <Box size={14} /> : <Layers size={14} />}
             <span>{renderMode === '3d' ? '3D Spatial' : '2D View'}</span>
@@ -255,7 +290,7 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
               <Droplets size={10} className="dd-metric-icon" /> Salinity
             </div>
             <div className="dd-metric-value">
-              {salinityPsu}<span className="dd-unit">psu</span>
+              {salinityPsu.toFixed ? salinityPsu.toFixed(2) : Number(salinityPsu).toFixed(2)}<span className="dd-unit">psu</span>
             </div>
           </div>
           <div className="dd-metric">

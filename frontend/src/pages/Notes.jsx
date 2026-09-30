@@ -23,7 +23,7 @@ export default function NotesPage() {
       
       <div className="task-card" style={{ marginTop: '2rem', minHeight: '300px' }}>
          <h3 style={{ marginBottom: '1rem' }}>New Note</h3>
-         <textarea style={{ width: '100%', height: '200px', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', outline: 'none' }} placeholder="Type your observations here..."></textarea>
+         <textarea style={{ width: '100%', height: '200px', padding: '1rem', border: '1px solid var(--border)', borderRadius: '8px', outline: 'none', background: 'var(--bg-input)', color: 'var(--text-main)' }} placeholder="Type your observations here..."></textarea>
          <button className="promo-btn" style={{ marginTop: '1rem' }}>Save Note</button>
       </div>
     </>

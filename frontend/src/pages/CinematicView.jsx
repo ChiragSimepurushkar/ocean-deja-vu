@@ -2,14 +2,26 @@ import React, { useState, useEffect, useRef } from 'react';
 import Plot from 'react-plotly.js';
 import { getField } from '../api';
 import { useNavigate } from 'react-router-dom';
-import { Maximize2, Minimize2, Search, Crosshair, ArrowUpRight, ArrowDownRight, Navigation2, Thermometer, Droplets, Wind } from 'lucide-react';
+import { Maximize2, Minimize2, Search, Crosshair, ArrowUpRight, ArrowDownRight, Navigation2, Thermometer, Droplets, Wind, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Play, Square, ChevronUp, ChevronDown, ArrowUpLeft, ArrowDownLeft, Info } from 'lucide-react';
+import { gsap } from 'gsap';
+import { Tooltip } from '../components/Tooltip';
+import { useOceanDataset } from '../hooks/useOceanDataset';
 import './DeepDive.css';
 
 const DEPTHS = [0, 50, 100, 200, 500, 1000];
 const TABS = ['Temperature', '20°C Isotherm', 'Salinity', 'Currents'];
 
+const SCIENTIFIC_NOTES = [
+  "Surface layer, pre-monsoon warming phase...",
+  "Base of the actively mixed wind-driven layer. Strong mechanical turbulence.",
+  "Thermal transition zone. Temperature drops steeply per meter.",
+  "Permanent Thermocline Barrier. Oxygen Minimum Zone.",
+  "Intense hydrostatic pressure. Temperature stabilizes near 8-9°C.",
+  "Cold Antarctic Intermediate Water influence. Midnight Abyss."
+];
+
 const Sparkline = ({ data, color }) => {
-  if (!data || data.length < 2) return <div style={{width: '60px', height: '20px', background: '#f1f5f9', borderRadius: '4px'}} />;
+  if (!data || data.length < 2) return <div style={{width: '60px', height: '20px', background: 'var(--bg-input)', borderRadius: '4px'}} />;
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
@@ -29,35 +41,46 @@ export default function CinematicView() {
   const initialLon = parseFloat(searchParams.get('lon') || 65);
   const selectedDate = searchParams.get('date') || '2023-01-01';
 
+  const { data: oceanData, loading } = useOceanDataset(selectedDate);
   const [layersData, setLayersData] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
   
   const [activeTab, setActiveTab] = useState('Temperature');
   const [probeLat, setProbeLat] = useState(initialLat);
   const [probeLon, setProbeLon] = useState(initialLon);
   const [probeDepthIdx, setProbeDepthIdx] = useState(0);
+  
   const [command, setCommand] = useState('');
   const [probeHistory, setProbeHistory] = useState([]);
-
+  
+  const [stepSize, setStepSize] = useState(1);
+  const [cameraObj, setCameraObj] = useState({ eye: {x: 1.5, y: -1.5, z: 0.8}, up: {x: 0, y: 0, z: 1} });
+  const [camRev, setCamRev] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [sequenceProgress, setSequenceProgress] = useState(0);
+  const [caption, setCaption] = useState("");
+  const timelineRef = useRef(null);
+  
   useEffect(() => {
-    async function loadLayers() {
-      setLoading(true);
-      const fetchedLayers = await Promise.all(
-        DEPTHS.map(async d => {
-          try {
-             return await getField(selectedDate, d);
-          } catch (e) {
-             console.error(e);
-             return null;
-          }
-        })
-      );
-      setLayersData(fetchedLayers);
-      setLoading(false);
+    if (oceanData && oceanData.reconstructed) {
+       const mappedLayers = DEPTHS.map((d, i) => {
+         // Create mock structures that match what the app expects based on JSON schema
+         const lats = Array.from({length: 100}, (_, idx) => 5 + idx * 0.25);
+         const lons = Array.from({length: 240}, (_, idx) => 45 + idx * 0.25);
+         let dataGrid = oceanData.reconstructed.temperature[i];
+         if (!dataGrid || dataGrid.length === 0) {
+             // Fallback if our mock data generator arrays are empty
+             dataGrid = lats.map(() => lons.map(() => 0));
+         }
+         return {
+           lat: lats,
+           lon: lons,
+           data: dataGrid
+         };
+       });
+       setLayersData(mappedLayers);
     }
-    loadLayers();
-  }, [selectedDate]);
+  }, [oceanData]);
 
   const getProbeValue = (lat, lon, depthIdx) => {
     if (!layersData[depthIdx]) return null;
@@ -84,6 +107,55 @@ export default function CinematicView() {
       });
     }
   }, [probeLat, probeLon, probeDepthIdx, loading, layersData]);
+
+  const handleMove = (dx, dy, dDepth) => {
+    let newLon = probeLon + dx * 0.25 * stepSize;
+    let newLat = probeLat + dy * 0.25 * stepSize;
+    let newDepthIdx = Math.max(0, Math.min(DEPTHS.length - 1, probeDepthIdx + dDepth));
+    setProbeLon(newLon);
+    setProbeLat(newLat);
+    setProbeDepthIdx(newDepthIdx);
+  };
+
+  const toggleCinematic = () => {
+    if (isPlaying) {
+      if (timelineRef.current) timelineRef.current.kill();
+      setIsPlaying(false);
+      setSequenceProgress(0);
+      setCaption("");
+    } else {
+      setIsPlaying(true);
+      const tl = gsap.timeline({
+        onUpdate: function() { setSequenceProgress(this.progress() * 100); },
+        onComplete: () => { setIsPlaying(false); setCaption(""); }
+      });
+      timelineRef.current = tl;
+      
+      const presets = [
+        { eye: {x: 0, y: 0, z: 2.5}, dIdx: 0 }, // Top
+        { eye: {x: 0, y: -2.5, z: 0.5}, dIdx: 1 }, // Front
+        { eye: {x: 2.5, y: 0, z: 0.5}, dIdx: 2 }, // Side
+        { eye: {x: 1.5, y: -1.5, z: 0.8}, dIdx: 3 }, // Angled
+        { eye: {x: -1.5, y: -1.5, z: 1.2}, dIdx: 4 }, // Elevated
+        { eye: {x: 1.5, y: 1.5, z: 0.3}, dIdx: 5 }, // Low angle
+      ];
+      
+      let camState = { ...cameraObj.eye };
+      
+      presets.forEach((p, i) => {
+        tl.to(camState, {
+          x: p.eye.x, y: p.eye.y, z: p.eye.z,
+          duration: 2,
+          ease: "power2.inOut",
+          onStart: () => setCaption(SCIENTIFIC_NOTES[p.dIdx]),
+          onUpdate: () => {
+             setCameraObj({ eye: { x: camState.x, y: camState.y, z: camState.z }, up: {x:0, y:0, z:1} });
+             setCamRev(r => r + 1);
+          }
+        }, `+=${i === 0 ? 0 : 0.5}`);
+      });
+    }
+  };
 
   const handleCommandSubmit = (e) => {
     if (e.key === 'Enter') {
@@ -130,9 +202,9 @@ export default function CinematicView() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '600px', background: 'white', color: '#0f172a', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '600px', background: 'var(--bg-panel)', color: 'var(--text-main)', borderRadius: '16px', border: '1px solid var(--border)' }}>
         <h2 style={{ color: 'var(--primary)' }}>Initializing Probe Telemetry...</h2>
-        <p>Fetching multi-depth volumetric data</p>
+        <p style={{ color: 'var(--text-muted)' }}>Fetching multi-depth volumetric data</p>
       </div>
     );
   }
@@ -154,7 +226,6 @@ export default function CinematicView() {
   const getHeroTraces = () => {
     const traces = [];
     
-    // Always add the Probe Marker
     traces.push({
       type: 'scatter3d',
       mode: 'markers',
@@ -185,7 +256,7 @@ export default function CinematicView() {
       for(let y=0; y<layer0.lat.length; y++) {
         let rowZ = [], rowC = [];
         for(let x=0; x<layer0.lon.length; x++) {
-           let bestDepth = -5; // floor
+           let bestDepth = -5;
            let minDiff = 999;
            slicedLayersData.forEach((layer, dIdx) => {
               if(!layer) return;
@@ -217,7 +288,7 @@ export default function CinematicView() {
         x: layer.lon, y: layer.lat, z: layer.data.map(() => layer.lon.map(() => 0)),
         surfacecolor: layer.data.map(row => row.map(v => v ? 32 + (v/32)*5 : null)),
         colorscale: 'Viridis',
-        contours: { z: { show: true, usecolormap: true, highlightcolor: "white", project: {z: true} } },
+        contours: { z: { show: true, usecolormap: true, highlightcolor: "rgba(255,255,255,0.2)", project: {z: true} } },
         showscale: false
       });
     }
@@ -248,7 +319,6 @@ export default function CinematicView() {
   };
 
   const getThumbnailTraces = (tab) => {
-    // simplified version for thumbnails
     if (tab === 'Temperature') return [{ type: 'surface', z: [[1,1],[1,1]], surfacecolor: [[25,25],[10,10]], colorscale: 'Jet', showscale: false }];
     if (tab === '20°C Isotherm') return [{ type: 'surface', z: [[0,-2],[-1,-3]], surfacecolor: [[20,20],[20,20]], colorscale: 'Jet', showscale: false }];
     if (tab === 'Salinity') return [{ type: 'surface', z: [[0,0],[0,0]], surfacecolor: [[34,35],[36,37]], colorscale: 'Viridis', showscale: false }];
@@ -261,7 +331,7 @@ export default function CinematicView() {
   const getDelta = (curr, prev, unit) => {
     if (curr === undefined || prev === undefined) return null;
     const diff = curr - prev;
-    if (Math.abs(diff) < 0.01) return <span style={{color: '#64748b'}}>—</span>;
+    if (Math.abs(diff) < 0.01) return <span style={{color: 'var(--text-muted)'}}>—</span>;
     return diff > 0 
       ? <span style={{color: '#ef4444', display:'flex', alignItems:'center'}}><ArrowUpRight size={12}/>{diff.toFixed(2)}{unit}</span>
       : <span style={{color: '#3b82f6', display:'flex', alignItems:'center'}}><ArrowDownRight size={12}/>{Math.abs(diff).toFixed(2)}{unit}</span>;
@@ -269,55 +339,97 @@ export default function CinematicView() {
 
   return (
     <div style={{ 
-      ...(isFullScreen ? { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999 } : { width: '100%', height: 'calc(100vh - 120px)', position: 'relative', borderRadius: '16px', border: '1px solid #E2E8F0' }),
-      background: 'white', overflow: 'hidden', display: 'flex', flexDirection: 'column'
+      ...(isFullScreen ? { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999 } : { width: '100%', height: 'calc(100vh - 120px)', position: 'relative', borderRadius: '16px', border: '1px solid var(--border)' }),
+      background: 'var(--bg-panel)', overflow: 'hidden', display: 'flex', flexDirection: 'column'
     }}>
       {/* Top Header & Search Bar */}
-      <div style={{ padding: '1rem', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-panel)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <h1 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Navigation2 size={20} color="var(--primary)"/> Volumetric Probe & Compare
+            <Tooltip content="This view lets you slice the ocean volumetrically. Use the compass controls to move the probe horizontally (by grid cell) and vertically (by depth level). Observe how values change in the trend strip below.">
+              <Info size={16} color="var(--text-muted)" style={{ cursor: 'pointer', outline: 'none' }} />
+            </Tooltip>
           </h1>
-          <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
             Target: {probeLat.toFixed(2)}°N, {probeLon.toFixed(2)}°E @ {DEPTHS[probeDepthIdx]}m depth
           </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+             <button onClick={toggleCinematic} className="tour-cinematic" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', background: isPlaying ? '#ef4444' : 'var(--primary)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
+                {isPlaying ? <><Square size={14}/> Stop</> : <><Play size={14}/> Cinematic Sequence</>}
+             </button>
+             <Tooltip content="The Cinematic Sequence auto-plays a guided tour through different camera perspectives, showing how the ocean characteristics change with depth.">
+               <Info size={16} color="var(--text-muted)" style={{ cursor: 'pointer', outline: 'none' }} />
+             </Tooltip>
+             {isPlaying && (
+               <div style={{ width: '150px', height: '6px', background: 'var(--bg-input)', borderRadius: '3px', overflow: 'hidden' }}>
+                 <div style={{ width: `${sequenceProgress}%`, height: '100%', background: 'var(--primary)' }} />
+               </div>
+             )}
+          </div>
         </div>
         
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', width: '45%' }}>
-          <div className="search-bar" style={{ flex: 1, margin: 0, border: '2px solid #cbd5e1', background: 'white' }}>
-            <Search size={18} color="#8B8C9A" />
-            <input 
-              type="text" 
-              placeholder='e.g. "north 2 cells", "deeper 100m", "5km left"' 
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              onKeyDown={handleCommandSubmit}
-              style={{ width: '100%' }}
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }} className="tour-compass">
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', background: 'var(--bg-input)', padding: '4px', borderRadius: '8px', gap: '4px' }}>
+              <button onClick={() => setStepSize(1)} style={{ padding: '4px 8px', background: stepSize === 1 ? 'var(--primary)' : 'transparent', color: stepSize === 1 ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>1 cell</button>
+              <button onClick={() => setStepSize(5)} style={{ padding: '4px 8px', background: stepSize === 5 ? 'var(--primary)' : 'transparent', color: stepSize === 5 ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>5 cells</button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', background: 'var(--bg-input)', padding: '4px', borderRadius: '8px' }}>
+               <button onClick={() => handleMove(-1, 1, 0)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-main)' }}><ArrowUpLeft size={16} /></button>
+               <button onClick={() => handleMove(0, 1, 0)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-main)' }}><ArrowUp size={16} /></button>
+               <button onClick={() => handleMove(1, 1, 0)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-main)' }}><ArrowUpRight size={16} /></button>
+               <button onClick={() => handleMove(-1, 0, 0)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-main)' }}><ArrowLeft size={16} /></button>
+               <button style={{ border: 'none', background: 'transparent', color: 'var(--primary)' }}><Crosshair size={16} /></button>
+               <button onClick={() => handleMove(1, 0, 0)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-main)' }}><ArrowRight size={16} /></button>
+               <button onClick={() => handleMove(-1, -1, 0)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-main)' }}><ArrowDownLeft size={16} /></button>
+               <button onClick={() => handleMove(0, -1, 0)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-main)' }}><ArrowDown size={16} /></button>
+               <button onClick={() => handleMove(1, -1, 0)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-main)' }}><ArrowDownRight size={16} /></button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-input)', padding: '4px', borderRadius: '8px' }}>
+               <button onClick={() => handleMove(0, 0, -1)} style={{ padding: '2px 6px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-main)', display: 'flex', alignItems: 'center', fontSize: '0.75rem', fontWeight: 600 }}><ChevronUp size={14}/> Shallower</button>
+               <button onClick={() => handleMove(0, 0, 1)} style={{ padding: '2px 6px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-main)', display: 'flex', alignItems: 'center', fontSize: '0.75rem', fontWeight: 600 }}><ChevronDown size={14}/> Deeper</button>
+            </div>
           </div>
-          <button onClick={() => setIsFullScreen(!isFullScreen)} style={{ padding: '8px 12px', background: 'white', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
-            {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-          </button>
+          
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div className="search-bar" style={{ margin: 0, border: '1px solid var(--border)', background: 'var(--bg-input)', padding: '4px 8px', borderRadius: '6px' }}>
+              <Search size={14} color="var(--text-muted)" />
+              <input 
+                type="text" 
+                placeholder='Search (e.g. north 2 cells)' 
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                onKeyDown={handleCommandSubmit}
+                style={{ width: '150px', fontSize: '0.8rem', color: 'var(--text-main)', background: 'transparent', border: 'none', outline: 'none' }}
+              />
+            </div>
+            <button onClick={() => setIsFullScreen(!isFullScreen)} style={{ padding: '6px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-main)' }}>
+              {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+          </div>
         </div>
       </div>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Left Side: Multiples Strip */}
-        <div style={{ width: '180px', borderRight: '1px solid #E2E8F0', background: '#f1f5f9', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
-          <h3 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Perspectives</h3>
+        <div style={{ width: '180px', borderRight: '1px solid var(--border)', background: 'var(--bg-input)', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Perspectives</h3>
           {TABS.map(tab => (
             <div 
               key={tab} 
               onClick={() => setActiveTab(tab)}
               style={{ 
-                background: 'white', borderRadius: '8px', padding: '8px', cursor: 'pointer',
-                border: activeTab === tab ? '2px solid var(--primary)' : '1px solid #cbd5e1',
+                background: 'var(--bg-panel)', borderRadius: '8px', padding: '8px', cursor: 'pointer',
+                border: activeTab === tab ? '2px solid var(--primary)' : '1px solid var(--border)',
                 boxShadow: activeTab === tab ? '0 4px 12px rgba(37,99,235,0.15)' : 'none',
                 transition: 'all 0.2s'
               }}
             >
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: activeTab === tab ? 'var(--primary)' : '#475569', marginBottom: '6px' }}>{tab}</div>
-              <div style={{ height: '80px', borderRadius: '4px', overflow: 'hidden', background: '#e2e8f0', pointerEvents: 'none' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: activeTab === tab ? 'var(--primary)' : 'var(--text-main)', marginBottom: '6px' }}>{tab}</div>
+              <div style={{ height: '80px', borderRadius: '4px', overflow: 'hidden', background: 'var(--bg-input)', pointerEvents: 'none' }}>
                  <Plot
                     data={getThumbnailTraces(tab)}
                     layout={{ margin: {l:0, r:0, t:0, b:0}, scene: {xaxis: {visible:false}, yaxis: {visible:false}, zaxis: {visible:false}}, paper_bgcolor:'transparent', plot_bgcolor:'transparent' }}
@@ -330,9 +442,14 @@ export default function CinematicView() {
         </div>
 
         {/* Center: Hero Panel */}
-        <div style={{ flex: 1, position: 'relative', background: '#020617' }}>
-          <div style={{ position: 'absolute', top: 15, left: 15, zIndex: 10, background: 'rgba(15,23,42,0.7)', padding: '6px 12px', borderRadius: '6px', backdropFilter: 'blur(4px)', border: '1px solid #334155' }}>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ flex: 1, position: 'relative', background: 'var(--chart-bg)' }}>
+          {caption && (
+            <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', zIndex: 20, background: 'rgba(2,6,23,0.85)', padding: '12px 24px', borderRadius: '12px', color: '#38bdf8', fontSize: '1.1rem', fontWeight: 600, border: '1px solid #0369a1', backdropFilter: 'blur(8px)', textAlign: 'center', maxWidth: '80%', opacity: 1, transition: 'opacity 0.5s' }}>
+              {caption}
+            </div>
+          )}
+          <div style={{ position: 'absolute', top: 15, left: 15, zIndex: 10, background: 'var(--bg-panel)', padding: '6px 12px', borderRadius: '6px', backdropFilter: 'blur(4px)', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               {activeTab === 'Temperature' && <Thermometer size={18} color="#38bdf8"/>}
               {activeTab === 'Salinity' && <Droplets size={18} color="#34d399"/>}
               {activeTab === 'Currents' && <Wind size={18} color="#f472b6"/>}
@@ -342,14 +459,15 @@ export default function CinematicView() {
           <Plot
             data={getHeroTraces()}
             layout={{
+              uirevision: camRev,
               autosize: true, margin: { l: 0, r: 0, b: 0, t: 0 },
               paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
               scene: {
                 aspectratio: { x: 2, y: 2, z: 1 },
-                xaxis: { title: 'Lon', color: '#475569', gridcolor: '#1e293b' },
-                yaxis: { title: 'Lat', color: '#475569', gridcolor: '#1e293b' },
-                zaxis: { title: 'Depth', color: '#475569', gridcolor: '#1e293b' },
-                camera: { eye: {x: 1.5, y: -1.5, z: 0.8} }
+                xaxis: { title: 'Lon', color: 'var(--text-muted)', gridcolor: 'var(--border)' },
+                yaxis: { title: 'Lat', color: 'var(--text-muted)', gridcolor: 'var(--border)' },
+                zaxis: { title: 'Depth', color: 'var(--text-muted)', gridcolor: 'var(--border)' },
+                camera: cameraObj
               }
             }}
             config={{ displayModeBar: false, responsive: true }}
@@ -360,12 +478,12 @@ export default function CinematicView() {
       </div>
 
       {/* Bottom: Trend Strip & Deltas */}
-      <div style={{ height: '80px', borderTop: '1px solid #E2E8F0', background: 'white', display: 'flex', alignItems: 'center', padding: '0 1rem', gap: '2rem' }}>
+      <div style={{ height: '80px', borderTop: '1px solid var(--border)', background: 'var(--bg-panel)', display: 'flex', alignItems: 'center', padding: '0 1rem', gap: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ background: '#fef2f2', padding: '8px', borderRadius: '8px' }}><Thermometer size={20} color="#ef4444" /></div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>TEMPERATURE</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', display:'flex', alignItems:'center', gap:'6px' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>TEMPERATURE</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', display:'flex', alignItems:'center', gap:'6px' }}>
               {currentHist.temp ? currentHist.temp.toFixed(2) : '--'}°C
               <span style={{ fontSize: '0.85rem' }}>{getDelta(currentHist.temp, prevHist.temp, '°')}</span>
             </div>
@@ -373,13 +491,13 @@ export default function CinematicView() {
           <div style={{ marginLeft: '10px' }}><Sparkline data={probeHistory.map(h => h.temp)} color="#ef4444" /></div>
         </div>
 
-        <div style={{ width: '1px', height: '40px', background: '#E2E8F0' }}></div>
+        <div style={{ width: '1px', height: '40px', background: 'var(--border)' }}></div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ background: '#ecfdf5', padding: '8px', borderRadius: '8px' }}><Droplets size={20} color="#10b981" /></div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>SALINITY</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', display:'flex', alignItems:'center', gap:'6px' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>SALINITY</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', display:'flex', alignItems:'center', gap:'6px' }}>
               {currentHist.sal ? currentHist.sal.toFixed(2) : '--'} PSU
               <span style={{ fontSize: '0.85rem' }}>{getDelta(currentHist.sal, prevHist.sal, '')}</span>
             </div>
@@ -387,13 +505,13 @@ export default function CinematicView() {
           <div style={{ marginLeft: '10px' }}><Sparkline data={probeHistory.map(h => h.sal)} color="#10b981" /></div>
         </div>
 
-        <div style={{ width: '1px', height: '40px', background: '#E2E8F0' }}></div>
+        <div style={{ width: '1px', height: '40px', background: 'var(--border)' }}></div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ background: '#fdf4ff', padding: '8px', borderRadius: '8px' }}><Wind size={20} color="#d946ef" /></div>
           <div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>CURRENTS</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', display:'flex', alignItems:'center', gap:'6px' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>CURRENTS</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', display:'flex', alignItems:'center', gap:'6px' }}>
               {currentHist.cur ? currentHist.cur.toFixed(2) : '--'} m/s
               <span style={{ fontSize: '0.85rem' }}>{getDelta(currentHist.cur, prevHist.cur, '')}</span>
             </div>

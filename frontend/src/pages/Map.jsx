@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { Clock, Navigation2, Film } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Globe from "react-globe.gl";
-import { getField, getAdvisory } from "../api";
+import { getAdvisory } from "../api";
 import CurtainView from "../components/CurtainView";
+import { useOceanDataset } from "../hooks/useOceanDataset";
 
 export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, lon, setLon }) {
   const [advisory, setAdvisory] = useState(null);
-  const [fieldData, setFieldData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const { data: oceanData, loading, error } = useOceanDataset(date);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [viewMode, setViewMode] = useState("2d");
   const [transectStart, setTransectStart] = useState(null);
@@ -16,6 +16,7 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
   const [selectingTransect, setSelectingTransect] = useState(false);
   const [landPopup, setLandPopup] = useState(null);
   const [geoChecking, setGeoChecking] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
   const containerRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const navigate = useNavigate();
@@ -37,12 +38,24 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
     getAdvisory(date, lat, lon).then(setAdvisory).catch(console.error);
   }, [date, lat, lon]);
 
-  useEffect(() => {
-    setLoading(true);
-    getField(date, depth)
-      .then(data => { setFieldData(data); setLoading(false); })
-      .catch(err => { console.error(err); setLoading(false); });
-  }, [date, depth]);
+  const hexData = React.useMemo(() => {
+    if (!oceanData || !oceanData.surface || !oceanData.surface.sst) return [];
+    const data = [];
+    const latStart = oceanData.grid.latMin;
+    const lonStart = oceanData.grid.lonMin;
+    const res = oceanData.grid.resolution;
+    const sst = oceanData.surface.sst;
+
+    for (let y = 0; y < sst.length; y++) {
+      for (let x = 0; x < sst[y].length; x++) {
+        const val = sst[y][x];
+        if (val !== null && val !== undefined) {
+           data.push({ lat: latStart + y * res, lng: lonStart + x * res, temp: val });
+        }
+      }
+    }
+    return data;
+  }, [oceanData]);
 
   const clearTransect = () => {
     setTransectStart(null);
@@ -53,6 +66,15 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
 
   const handleGlobeClick = async ({ lat: clickLat, lng: clickLng }) => {
     setLandPopup(null);
+    setToastMsg("");
+    
+    // Bounding Box Check (5-30°N, 45-105°E)
+    if (clickLat < 5 || clickLat > 30 || clickLng < 45 || clickLng > 105) {
+      setToastMsg("No reconstructed data here — try within the North Indian Ocean domain (5-30°N, 45-105°E).");
+      setTimeout(() => setToastMsg(""), 4000);
+      return;
+    }
+
     setGeoChecking(true);
     try {
       const res = await fetch(
@@ -86,10 +108,10 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
 
   return (
     <>
-      <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", background: "#F8F9FA", padding: "1rem", borderRadius: "12px" }}>
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", background: "var(--bg-input)", padding: "1rem", borderRadius: "12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 700 }}>DATE</span>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ border: "none", background: "transparent", outline: "none", fontWeight: 600 }} />
+          <input type="date" min="2023-06-01" max="2023-06-07" value={date} onChange={e => setDate(e.target.value)} style={{ border: "none", background: "transparent", outline: "none", fontWeight: 600, color: "var(--text-main)" }} />
         </div>
         <div style={{ width: "1px", background: "#E2E8F0", margin: "0 0.5rem" }}></div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -126,15 +148,21 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
 
       <div
         ref={containerRef}
-        className={`task-card ${isFullScreen ? "fullscreen-chart" : ""}`}
+        className={`task-card tour-globe-click ${isFullScreen ? "fullscreen-chart" : ""}`}
         style={{ position: "relative", height: isFullScreen ? "100vh" : "450px", padding: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", borderLeft: "none", marginBottom: "2rem", background: "#000814", width: "100%" }}
       >
         <button
           onClick={() => setIsFullScreen(!isFullScreen)}
-          style={{ position: "absolute", top: 10, left: 10, zIndex: 100, padding: "6px 12px", background: "white", border: "1px solid #E2E8F0", borderRadius: "6px", cursor: "pointer", fontWeight: 600, color: "var(--text-main)" }}
+          style={{ position: "absolute", top: 10, left: 10, zIndex: 100, padding: "6px 12px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: "6px", cursor: "pointer", fontWeight: 600, color: "var(--text-main)" }}
         >
           {isFullScreen ? "Exit Full Screen" : "Full Screen"}
         </button>
+
+        {toastMsg && (
+          <div style={{ position: "absolute", bottom: 20, left: "50%", transform: "translateX(-50%)", zIndex: 100, background: "rgba(239, 68, 68, 0.9)", color: "white", padding: "8px 16px", borderRadius: "8px", fontWeight: "bold", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
+            {toastMsg}
+          </div>
+        )}
 
         <div style={{ position: "absolute", top: 10, right: 10, zIndex: 100, background: "rgba(0,0,0,0.55)", color: "#aef", fontSize: "0.75rem", padding: "4px 10px", borderRadius: "20px", backdropFilter: "blur(4px)", pointerEvents: "none" }}>
           🌊 Click ocean → Deep Dive &nbsp;|&nbsp; 🏔 Click land → Stats
@@ -182,14 +210,23 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
         )}
 
         {viewMode === "3d" ? (
-          <CurtainView startPoint={transectStart} endPoint={transectEnd} />
+          <CurtainView startPoint={transectStart} endPoint={transectEnd} date={date} />
         ) : loading ? (
           <div style={{ color: "#aef", fontFamily: "monospace" }}>Loading…</div>
         ) : (
           <Globe
-            globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-            bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+            globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
             backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+            pointsData={hexData}
+            pointLat="lat"
+            pointLng="lng"
+            pointAltitude={0.005}
+            pointRadius={0.25}
+            pointColor={d => {
+              const t = Math.max(0, Math.min(1, (d.temp - 25) / 7));
+              return `hsla(${240 - t * 240}, 100%, 50%, 0.8)`; // Blue to Red
+            }}
+            pointResolution={12}
             width={isFullScreen ? window.innerWidth : (containerWidth || 400)}
             height={isFullScreen ? window.innerHeight : 450}
             onGlobeClick={handleGlobeClick}
