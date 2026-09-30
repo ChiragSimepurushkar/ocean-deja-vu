@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 interface OceanSubmarineLightProps {
-  currentDepth: number; // 0 to 1000m
+  currentDepth: number;
   enabled?: boolean;
 }
 
@@ -11,50 +11,65 @@ export const OceanSubmarineLight: React.FC<OceanSubmarineLightProps> = ({
   currentDepth,
   enabled = true,
 }) => {
-  const { camera } = useThree();
-  const spotLightRef = useRef<THREE.SpotLight>(null);
-  const targetRef = useRef<THREE.Object3D>(null);
-  const pointLightRef = useRef<THREE.PointLight>(null);
+  const { camera, scene } = useThree();
+  const spotLightRef   = useRef<THREE.SpotLight>(null);
+  const pointLightRef  = useRef<THREE.PointLight>(null);
 
   useFrame(() => {
-    if (!spotLightRef.current || !targetRef.current) return;
+    if (!spotLightRef.current) return;
 
-    // Follow camera position with slight forward offset
+    // The light should stick exactly to the camera's position
     spotLightRef.current.position.copy(camera.position);
 
-    // Target 25 units straight in front of where camera is pointing
-    const forwardVector = new THREE.Vector3(0, 0, -25);
-    forwardVector.applyQuaternion(camera.quaternion);
-    targetRef.current.position.copy(camera.position).add(forwardVector);
+    // To make a spotlight follow the camera's rotation in world space,
+    // we take a point exactly 1 unit forward (-Z) in the camera's local space
+    // and translate that to world space to be the light's target.
+    const forwardVector = new THREE.Vector3(0, 0, -1);
+    forwardVector.applyMatrix4(camera.matrixWorld);
+    
+    // Update the default target object of the spotlight
+    spotLightRef.current.target.position.copy(forwardVector);
+    spotLightRef.current.target.updateMatrixWorld();
+
+    // Ensure the target is actually attached to the scene, or Three.js ignores it
+    if (spotLightRef.current.target.parent !== scene) {
+      scene.add(spotLightRef.current.target);
+    }
 
     if (pointLightRef.current) {
       pointLightRef.current.position.copy(camera.position);
     }
-  });
 
-  // Light is most visible and critical in deeper waters (>100m)
-  const intensity = enabled ? (currentDepth > 100 ? 5.5 : 2.5) : 0;
+    // Reactive intensities that instantly respond to the enabled toggle
+    // Note: Modern Three.js uses physically correct lighting, so 6.0 is basically a candle. We need 100s for a searchlight!
+    const spotIntensity   = enabled ? (currentDepth > 100 ? 300 : 150) : 0;
+    const pointIntensity  = enabled ? (currentDepth > 200 ? 40 : 20) : 0;
+    
+    // Smoothly damp the intensity so it feels like a real halogen bulb turning on/off
+    spotLightRef.current.intensity = THREE.MathUtils.lerp(spotLightRef.current.intensity, spotIntensity, 0.15);
+    if (pointLightRef.current) {
+      pointLightRef.current.intensity = THREE.MathUtils.lerp(pointLightRef.current.intensity, pointIntensity, 0.15);
+    }
+  });
 
   return (
     <>
-      <object3D ref={targetRef} />
-      {/* High-intensity submersible searchlight beam */}
       <spotLight
         ref={spotLightRef}
-        target={targetRef.current || undefined}
-        intensity={intensity}
         color="#cffafe"
         angle={0.52}
         penumbra={0.7}
-        distance={60}
+        distance={120}
+        decay={1.2}
         castShadow
+        intensity={0}
       />
-      {/* Soft local cockpit proximity wash light */}
       <pointLight
         ref={pointLightRef}
         color="#38bdf8"
-        intensity={currentDepth > 200 ? 1.5 : 0.8}
-        distance={12}
+        intensity={0}
+        distance={25}
+        decay={1.5}
       />
     </>
   );

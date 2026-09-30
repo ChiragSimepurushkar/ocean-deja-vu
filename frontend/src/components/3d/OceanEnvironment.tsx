@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -189,22 +189,40 @@ export const OceanEnvironment: React.FC<OceanEnvironmentProps> = ({ currentDepth
             </mesh>
 
             {rock.isCoral && (
-              <group position={[0.7, 0.6, 0.4]} scale={[0.3, 0.3, 0.3]}>
-                <mesh position={[0, 0.5, 0]}>
-                  <coneGeometry args={[1.2, 2.5, 5]} />
-                  <meshStandardMaterial color="#f43f5e" roughness={0.7} flatShading emissive="#f43f5e" emissiveIntensity={0.2} />
+              // Clean branching coral — monochromatic deep-ocean tones, no garish rainbow
+              <group position={[0.5, 0.5, 0.2]} scale={[0.28, 0.28, 0.28]}>
+                {/* Main trunk */}
+                <mesh position={[0, 1.0, 0]}>
+                  <cylinderGeometry args={[0.35, 0.55, 2.2, 7]} />
+                  <meshStandardMaterial color="#1a3a4a" roughness={0.85} flatShading emissive="#0e4a5e" emissiveIntensity={0.08} />
                 </mesh>
-                <mesh position={[1.2, 0.3, 0]} rotation={[0, 0, -0.4]}>
-                  <cylinderGeometry args={[0.4, 0.6, 1.8, 5]} />
-                  <meshStandardMaterial color="#2dd4bf" roughness={0.7} flatShading emissive="#2dd4bf" emissiveIntensity={0.15} />
+                {/* Branch left */}
+                <mesh position={[-1.1, 2.2, 0]} rotation={[0, 0, 0.6]}>
+                  <cylinderGeometry args={[0.2, 0.32, 1.6, 6]} />
+                  <meshStandardMaterial color="#1e4d60" roughness={0.8} flatShading emissive="#0d5c72" emissiveIntensity={0.1} />
                 </mesh>
-                <mesh position={[-1.0, 0.2, 0.5]} rotation={[0.3, 0, 0.4]}>
-                  <sphereGeometry args={[0.9, 6, 6]} />
-                  <meshStandardMaterial color="#f59e0b" roughness={0.7} flatShading emissive="#f59e0b" emissiveIntensity={0.15} />
+                {/* Branch right */}
+                <mesh position={[1.0, 2.0, 0.3]} rotation={[0, 0, -0.55]}>
+                  <cylinderGeometry args={[0.18, 0.28, 1.4, 6]} />
+                  <meshStandardMaterial color="#1e4d60" roughness={0.8} flatShading emissive="#0d5c72" emissiveIntensity={0.1} />
                 </mesh>
-                <mesh position={[0.5, 0.8, -0.8]} rotation={[0.2, 0, 0.2]}>
-                  <cylinderGeometry args={[0.3, 0.5, 2.2, 5]} />
-                  <meshStandardMaterial color="#a855f7" roughness={0.7} flatShading emissive="#a855f7" emissiveIntensity={0.15} />
+                {/* Branch forward */}
+                <mesh position={[0.2, 1.8, 1.0]} rotation={[0.7, 0, 0]}>
+                  <cylinderGeometry args={[0.16, 0.25, 1.2, 5]} />
+                  <meshStandardMaterial color="#24607a" roughness={0.78} flatShading emissive="#0e6880" emissiveIntensity={0.12} />
+                </mesh>
+                {/* Tip polyps (small rounded tips) */}
+                <mesh position={[-1.7, 3.1, 0]}>
+                  <sphereGeometry args={[0.28, 6, 6]} />
+                  <meshStandardMaterial color="#2dd4bf" roughness={0.6} flatShading emissive="#0d9488" emissiveIntensity={0.22} />
+                </mesh>
+                <mesh position={[1.6, 2.8, 0.4]}>
+                  <sphereGeometry args={[0.24, 6, 6]} />
+                  <meshStandardMaterial color="#22d3ee" roughness={0.6} flatShading emissive="#0891b2" emissiveIntensity={0.2} />
+                </mesh>
+                <mesh position={[0.25, 2.6, 1.7]}>
+                  <sphereGeometry args={[0.22, 6, 6]} />
+                  <meshStandardMaterial color="#38bdf8" roughness={0.6} flatShading emissive="#0369a1" emissiveIntensity={0.2} />
                 </mesh>
               </group>
             )}

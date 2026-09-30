@@ -1,32 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
-  Compass,
-  Lightbulb,
-  MousePointer,
-  Volume2,
-  VolumeX,
-  Box,
-  Layers,
-  Thermometer,
-  Droplets,
-  Gauge,
-  Sun,
-  Anchor,
-  Wind,
+  ArrowLeft, Compass, Lightbulb, Volume2, VolumeX,
+  Box, Layers, Thermometer, Droplets, Gauge, Sun, Anchor, Wind,
 } from 'lucide-react';
 import { Ocean3DScene } from '../components/3d/Ocean3DScene';
 import { ParallaxUnderwaterScene } from '../components/ParallaxUnderwaterScene';
 import { startAmbientOceanDrone, stopAmbientOceanDrone, updateUnderwaterDepthAcoustics } from '../utils/audio';
 import './DeepDive.css';
 
-/* ═══ Ocean Zone Definitions ═══════════════════════════════════ */
 const OCEAN_ZONES = [
   {
     id: 'epipelagic',
     name: 'Epipelagic Zone',
     layerName: 'Sunlit Surface Layer',
+    color: '#22d3ee',
     depthRange: [0, 60],
     note: 'Photosynthetically active; wind-driven mixed layer with homogeneous warm temperatures.',
     icon: '☀️',
@@ -35,6 +23,7 @@ const OCEAN_ZONES = [
     id: 'upper-thermo',
     name: 'Upper Thermocline',
     layerName: 'Rapid Thermal Gradient',
+    color: '#38bdf8',
     depthRange: [60, 200],
     note: 'Steepest temperature gradient; sharp pycnocline barrier inhibiting vertical mixing.',
     icon: '🌡️',
@@ -43,6 +32,7 @@ const OCEAN_ZONES = [
     id: 'mesopelagic',
     name: 'Mesopelagic Zone',
     layerName: 'Twilight Boundary',
+    color: '#0ea5e9',
     depthRange: [200, 500],
     note: 'Residual blue photons only; oxygen minimum zone; diel vertical migration corridor.',
     icon: '🌊',
@@ -51,6 +41,7 @@ const OCEAN_ZONES = [
     id: 'bathypelagic',
     name: 'Bathypelagic Zone',
     layerName: 'Midnight Realm',
+    color: '#0284c7',
     depthRange: [500, 800],
     note: 'Complete solar darkness; bioluminescence dominant; cold stable water mass.',
     icon: '🔦',
@@ -59,18 +50,19 @@ const OCEAN_ZONES = [
     id: 'abyssal',
     name: 'Abyssal Floor',
     layerName: 'Hadal Transition',
+    color: '#075985',
     depthRange: [800, 1000],
-    note: 'Extreme hydrostatic pressure, near-freezing temperatures, and chemosynthetic vent ecosystems.',
+    note: 'Extreme hydrostatic pressure, near-freezing temperatures, chemosynthetic vent ecosystems.',
     icon: '🌋',
   },
 ];
 
 const DEPTH_STOPS = [
-  { label: '0m', depth: 0 },
-  { label: '50m', depth: 50 },
-  { label: '150m', depth: 150 },
-  { label: '300m', depth: 300 },
-  { label: '600m', depth: 600 },
+  { label: '0m',    depth: 0    },
+  { label: '50m',   depth: 50   },
+  { label: '150m',  depth: 150  },
+  { label: '300m',  depth: 300  },
+  { label: '600m',  depth: 600  },
   { label: '1000m', depth: 1000 },
 ];
 
@@ -81,7 +73,6 @@ function getCurrentZone(depth) {
   return OCEAN_ZONES[0];
 }
 
-/* ═══ Component ════════════════════════════════════════════════ */
 export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85.0 }) {
   const navigate = useNavigate();
   const [currentDepth, setCurrentDepth] = useState(0);
@@ -92,7 +83,7 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
   const sliderRef = useRef(null);
   const isDragging = useRef(false);
 
-  // ── Audio ──
+  // Audio
   useEffect(() => {
     if (soundEnabled) startAmbientOceanDrone(true, currentDepth);
     else stopAmbientOceanDrone();
@@ -103,13 +94,21 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
     if (soundEnabled) updateUnderwaterDepthAcoustics(currentDepth);
   }, [currentDepth, soundEnabled]);
 
-  // ── Mouse wheel scroll ──
+  // Scroll to dive
   const handleWheel = useCallback((e) => {
-    const delta = e.deltaY > 0 ? 10 : -10;
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 15 : -15;
     setCurrentDepth((prev) => Math.max(0, Math.min(1000, prev + delta)));
   }, []);
 
-  // ── Vertical slider drag ──
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
+
+  // Vertical slider drag
   const handleSliderInteraction = useCallback((clientY) => {
     if (!sliderRef.current) return;
     const rect = sliderRef.current.getBoundingClientRect();
@@ -123,19 +122,17 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
   }, [handleSliderInteraction]);
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (isDragging.current) handleSliderInteraction(e.clientY);
-    };
-    const handleMouseUp = () => { isDragging.current = false; };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    const onMove = (e) => { if (isDragging.current) handleSliderInteraction(e.clientY); };
+    const onUp   = () => { isDragging.current = false; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
     };
   }, [handleSliderInteraction]);
 
-  // ── Compute telemetry ──
+  // Telemetry calculations
   const zone = getCurrentZone(currentDepth);
   const sst = 29.2 - Math.abs(lat - 12) * 0.25;
   const tempC = Math.max(2.1, sst - Math.pow(currentDepth / 1000, 0.42) * (sst - 2.1));
@@ -146,13 +143,12 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
   const soundSpeed = (1449.2 + 4.6 * tempC - 0.055 * tempC * tempC + 0.017 * currentDepth * 0.1).toFixed(0);
 
   const thumbPercent = (currentDepth / 1000) * 100;
-
-  // No-op discover for decorative creatures
   const noopDiscover = () => {};
 
   return (
-    <div ref={containerRef} onWheel={handleWheel} className="deep-dive-container">
-      {/* ── 3D / 2D Canvas ── */}
+    <div ref={containerRef} className="deep-dive-container">
+
+      {/* ── 3D / 2D Canvas (fills entire background) ── */}
       <div className="dive-canvas-wrap">
         {renderMode === '3d' ? (
           <Ocean3DScene
@@ -166,28 +162,31 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
             currentDepth={currentDepth}
             onDiscoverSpecies={noopDiscover}
             discoveredSpeciesIds={[]}
+            flashlightOn={flashlightOn}
           />
         )}
       </div>
 
       {/* ── Top Navigation Bar ── */}
       <div className="dd-top-bar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        {/* Left: back + coords + date */}
+        <div className="dd-top-left">
           <button onClick={() => navigate('/')} className="dd-btn" title="Back to Dashboard">
             <ArrowLeft size={15} />
             <span>Dashboard</span>
           </button>
           <div className="dd-badge">
-            <Compass size={13} color="#38bdf8" />
-            <span>{lat.toFixed(2)}°N, {lon.toFixed(2)}°E</span>
+            <Compass size={12} color="#38bdf8" />
+            <span>{lat.toFixed(2)}°N · {lon.toFixed(2)}°E</span>
           </div>
           <div className="dd-badge">
-            <span style={{ color: '#38bdf8', fontWeight: 700 }}>DATE</span>
+            <span className="dd-badge-key">DATE</span>
             <span>{date}</span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+        {/* Right: mode toggles */}
+        <div className="dd-top-right">
           <button
             onClick={() => setRenderMode(renderMode === '3d' ? '2d' : '3d')}
             className={`dd-btn ${renderMode === '3d' ? 'dd-btn-active' : ''}`}
@@ -198,6 +197,7 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
           <button
             onClick={() => setFlashlightOn(!flashlightOn)}
             className={`dd-btn ${flashlightOn ? 'dd-btn-active' : ''}`}
+            title="Toggle Submersible Headlight"
           >
             <Lightbulb size={14} color={flashlightOn ? '#fde047' : '#64748b'} />
             <span>{flashlightOn ? 'ON' : 'OFF'}</span>
@@ -205,165 +205,151 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`dd-btn ${soundEnabled ? 'dd-btn-active' : ''}`}
+            title="Toggle Ambient Sound"
           >
             {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
           </button>
         </div>
       </div>
 
-      {/* ── Instruction ── */}
-      <div className="dd-instruction-badge">
-        <MousePointer size={13} />
-        <span>Scroll to dive · Drag depth bar on right</span>
+      {/* ── Subtle instruction strip ── */}
+      <div className="dd-hint">
+        <span>↕ Scroll to dive &nbsp;·&nbsp; Drag depth bar →</span>
       </div>
 
-      {/* ── Center Watermark: big depth + zone ── */}
-      <div className="dd-layer-card" key={zone.id}>
-        <div className="dd-layer-depth">{currentDepth}m</div>
-        <div className="dd-layer-zone-name">{zone.name}</div>
+      {/* ── Center Watermark: depth + zone name ── */}
+      <div className="dd-watermark" key={zone.id}>
+        <div className="dd-watermark-depth">{currentDepth}m</div>
+        <div className="dd-watermark-zone">{zone.name.toUpperCase()}</div>
       </div>
 
-      {/* ── LEFT: Telemetry Panel ── */}
+      {/* ════════ LEFT: Telemetry Panel ════════ */}
       <div className="dd-telemetry-panel dd-glass">
+
+        {/* Header */}
         <div className="dd-panel-header">
-          <div className="dd-panel-title">Hydrostatic Telemetry</div>
-          <div className="dd-status-dot">LIVE</div>
+          <span className="dd-panel-title">Hydrostatic Telemetry</span>
+          <span className="dd-live-dot">LIVE</span>
         </div>
 
-        {/* Primary metrics */}
+        {/* 4 Primary metrics — 2×2 grid */}
         <div className="dd-metrics-grid">
           <div className="dd-metric">
             <div className="dd-metric-label">
-              <Thermometer size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
-              Temperature
+              <Thermometer size={10} className="dd-metric-icon" /> Temperature
             </div>
             <div className="dd-metric-value">
-              {tempC.toFixed(1)}<span className="unit">°C</span>
+              {tempC.toFixed(1)}<span className="dd-unit">°C</span>
             </div>
           </div>
           <div className="dd-metric">
             <div className="dd-metric-label">
-              <Gauge size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
-              Pressure
+              <Gauge size={10} className="dd-metric-icon" /> Pressure
             </div>
             <div className="dd-metric-value">
-              {pressureAtm}<span className="unit">atm</span>
+              {pressureAtm}<span className="dd-unit">atm</span>
             </div>
           </div>
           <div className="dd-metric">
             <div className="dd-metric-label">
-              <Droplets size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
-              Salinity
+              <Droplets size={10} className="dd-metric-icon" /> Salinity
             </div>
             <div className="dd-metric-value">
-              {salinityPsu}<span className="unit">psu</span>
+              {salinityPsu}<span className="dd-unit">psu</span>
             </div>
           </div>
           <div className="dd-metric">
             <div className="dd-metric-label">
-              <Wind size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
-              Dissolved O₂
+              <Wind size={10} className="dd-metric-icon" /> Dissolved O₂
             </div>
             <div className="dd-metric-value">
-              {dissolvedO2}<span className="unit">mL/L</span>
+              {dissolvedO2}<span className="dd-unit">mL/L</span>
             </div>
           </div>
         </div>
 
-        {/* Secondary metrics */}
-        <div className="dd-secondary-metrics">
+        {/* 3 Secondary metrics */}
+        <div className="dd-secondary-row">
           <div className="dd-secondary-metric">
-            <div className="dd-secondary-metric-label">
-              <Sun size={9} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '2px' }} />
-              Light
+            <div className="dd-secondary-label">
+              <Sun size={9} className="dd-metric-icon" /> Irradiance
             </div>
-            <div className="dd-secondary-metric-value">{irradiance}%</div>
+            <div className="dd-secondary-value">{irradiance}%</div>
           </div>
           <div className="dd-secondary-metric">
-            <div className="dd-secondary-metric-label">
-              <Anchor size={9} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '2px' }} />
-              Sound Vel.
+            <div className="dd-secondary-label">
+              <Anchor size={9} className="dd-metric-icon" /> Sound Vel.
             </div>
-            <div className="dd-secondary-metric-value">{soundSpeed} m/s</div>
+            <div className="dd-secondary-value">{soundSpeed} m/s</div>
           </div>
           <div className="dd-secondary-metric">
-            <div className="dd-secondary-metric-label">Δ SST</div>
-            <div className="dd-secondary-metric-value">-{(sst - tempC).toFixed(1)}°</div>
+            <div className="dd-secondary-label">Δ SST</div>
+            <div className="dd-secondary-value">−{(sst - tempC).toFixed(1)}°</div>
           </div>
         </div>
 
-        {/* Stratum info */}
-        <div className="dd-stratum-block">
-          <div className="dd-stratum-zone">{zone.icon} {zone.id}</div>
+        {/* Divider */}
+        <div className="dd-divider" />
+
+        {/* Stratum descriptor */}
+        <div className="dd-stratum">
+          <div className="dd-stratum-tag" style={{ color: zone.color }}>
+            {zone.icon}&nbsp;&nbsp;{zone.id.toUpperCase()}
+          </div>
           <div className="dd-stratum-name">{zone.layerName}</div>
           <div className="dd-stratum-note">{zone.note}</div>
         </div>
       </div>
 
-      {/* ── RIGHT: Vertical Depth Rail ── */}
-      <div className="dd-depth-rail dd-glass" style={{ padding: '0.75rem 0.5rem', width: '72px' }}>
-        <div className="dd-depth-label-top">0 m</div>
+      {/* ════════ RIGHT: Vertical Depth Rail ════════ */}
+      <div className="dd-depth-rail dd-glass">
+        <div className="dd-rail-label-top">0 m</div>
 
         <div
           ref={sliderRef}
-          className="dd-depth-slider"
+          className="dd-rail-track-wrap"
           onMouseDown={handleSliderMouseDown}
-          style={{ flex: 1, width: '100%', position: 'relative', cursor: 'pointer' }}
         >
-          {/* Gradient track */}
-          <div className="dd-depth-slider-track" />
+          {/* Gradient track bar */}
+          <div className="dd-rail-track" />
 
-          {/* Zone tick marks */}
+          {/* Zone boundary ticks */}
           {OCEAN_ZONES.map((z) => {
             const pct = (z.depthRange[0] / 1000) * 100;
             return (
               <div
                 key={z.id}
-                style={{
-                  position: 'absolute',
-                  right: '22px',
-                  top: `${pct}%`,
-                  transform: 'translateY(-50%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  pointerEvents: 'none',
-                }}
+                className="dd-rail-tick"
+                style={{ top: `${pct}%` }}
               >
-                <span style={{ fontSize: '0.5rem', color: 'rgba(148,163,184,0.5)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                  {z.depthRange[0]}
-                </span>
-                <span style={{ width: '8px', height: '1px', background: 'rgba(56,189,248,0.25)', display: 'block' }} />
+                <span className="dd-rail-tick-label">{z.depthRange[0]}</span>
+                <span className="dd-rail-tick-line" />
               </div>
             );
           })}
 
           {/* Draggable thumb */}
-          <div
-            className="dd-depth-slider-thumb"
-            style={{ top: `${thumbPercent}%` }}
-          >
-            <div className="dd-depth-readout">
-              {currentDepth}m
-            </div>
+          <div className="dd-rail-thumb" style={{ top: `${thumbPercent}%` }}>
+            <div className="dd-rail-readout">{currentDepth}m</div>
           </div>
         </div>
 
-        <div className="dd-depth-label-bottom">1000 m</div>
+        <div className="dd-rail-label-bottom">1000 m</div>
       </div>
 
-      {/* ── Bottom Center: Quick Jump Buttons ── */}
-      <div className="dd-bottom-controls">
-        {DEPTH_STOPS.map((stop) => (
+      {/* ════════ Bottom Center: Quick-Jump Depth Pills ════════ */}
+      <div className="dd-depth-pills">
+        {DEPTH_STOPS.map((s) => (
           <button
-            key={stop.depth}
-            onClick={() => setCurrentDepth(stop.depth)}
-            className={`dd-layer-pill ${Math.abs(currentDepth - stop.depth) < 35 ? 'active' : ''}`}
+            key={s.depth}
+            onClick={() => setCurrentDepth(s.depth)}
+            className={`dd-pill ${Math.abs(currentDepth - s.depth) < 35 ? 'dd-pill-active' : ''}`}
           >
-            {stop.label}
+            {s.label}
           </button>
         ))}
       </div>
+
     </div>
   );
 }

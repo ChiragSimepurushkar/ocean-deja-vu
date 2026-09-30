@@ -21,6 +21,7 @@ interface ParallaxUnderwaterSceneProps {
   currentDepth: number; // 0 to 1000m
   onDiscoverSpecies: (species: MarineSpecies) => void;
   discoveredSpeciesIds: string[];
+  flashlightOn?: boolean;
 }
 
 interface CreatureActor {
@@ -47,6 +48,7 @@ export const ParallaxUnderwaterScene: React.FC<ParallaxUnderwaterSceneProps> = (
   currentDepth,
   onDiscoverSpecies,
   discoveredSpeciesIds,
+  flashlightOn = true,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [actors, setActors] = useState<CreatureActor[]>([]);
@@ -666,6 +668,17 @@ export const ParallaxUnderwaterScene: React.FC<ParallaxUnderwaterSceneProps> = (
             );
           })}
       </div>
+
+      {/* 2D Flashlight Overlay for Deep Zones */}
+      <div 
+        className="absolute inset-0 pointer-events-none transition-all duration-500 z-[40]"
+        style={{
+          opacity: currentDepth > 200 ? Math.min(1, (currentDepth - 200) / 200) : 0,
+          background: flashlightOn 
+            ? 'radial-gradient(circle at 50% 50%, rgba(200,240,255,0.1) 0%, transparent 20%, rgba(2,6,23,0.85) 50%, rgba(2,6,23,0.98) 100%)' 
+            : 'rgba(2,6,23,0.98)',
+        }}
+      />
     </div>
   );
 };
