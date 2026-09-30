@@ -360,18 +360,40 @@ export default function CinematicView({ lat, lon, date }) {
       display: 'flex',
       flexDirection: 'column'
     }}>
-      <div style={{ padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '2rem', color: '#0f172a' }}>Oceanographic Simulation</h1>
-          <p style={{ color: '#64748b', fontSize: '1.1rem', margin: '5px 0 20px 0' }}>{statusText}</p>
+      <div style={{ padding: '0.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '10px', flexShrink: 0 }}>
+        {/* Top Row: Title and Main Actions */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>Oceanographic Simulation</h1>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '4px 0 0 0' }}>{statusText}</p>
+          </div>
           
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'white', border: '1px solid #E2E8F0', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
+            >
+              {isFullScreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              {isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            </button>
+            <button 
+              onClick={() => navigate('/')} 
+              style={{ padding: '6px 12px', background: 'white', border: '1px solid #E2E8F0', color: '#0f172a', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
+            >
+              Close Viewer
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Row: Dashboard Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', width: '100%', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button 
               onClick={cinemaMode} 
               disabled={isPlaying}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: isPlaying ? '#E2E8F0' : '#eab308', color: isPlaying ? '#94a3b8' : 'black', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: isPlaying ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(234, 179, 8, 0.3)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: isPlaying ? '#E2E8F0' : '#eab308', color: isPlaying ? '#94a3b8' : 'black', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem', cursor: isPlaying ? 'not-allowed' : 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(234, 179, 8, 0.3)' }}
             >
-              <Play size={18} fill="currentColor" />
+              <Play size={14} fill="currentColor" />
               {isPlaying ? 'Presenting...' : 'Cinematic Sequence'}
             </button>
             
@@ -381,13 +403,13 @@ export default function CinematicView({ lat, lon, date }) {
                 setPlaybackSpeed(newSpeed);
                 speedRef.current = newSpeed;
               }}
-              style={{ padding: '10px 16px', background: 'white', color: '#0f172a', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+              style={{ padding: '6px 12px', background: 'white', color: '#0f172a', border: '1px solid #E2E8F0', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}
             >
               Speed: {playbackSpeed}x
             </button>
 
             {/* Camera Controls */}
-            <div style={{ display: 'flex', gap: '5px', marginLeft: '15px', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', gap: '4px', marginLeft: '10px', background: '#f1f5f9', padding: '4px', borderRadius: '6px' }}>
               {[
                 { label: 'Top', cam: CAM.topDown },
                 { label: 'Front', cam: CAM.front },
@@ -399,37 +421,22 @@ export default function CinematicView({ lat, lon, date }) {
                 <button
                   key={btn.label}
                   onClick={() => forceCamera(btn.cam)}
-                  style={{ padding: '6px 12px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', color: '#334155', fontSize: '0.9rem' }}
+                  style={{ padding: '4px 8px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontWeight: '600', color: '#334155', fontSize: '0.8rem' }}
                 >
                   {btn.label}
                 </button>
               ))}
             </div>
-            {/* Data Panning Controls */}
-            <div style={{ display: 'flex', gap: '5px', marginLeft: '15px', background: '#e0f2fe', padding: '4px', borderRadius: '8px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0284c7', alignSelf: 'center', padding: '0 8px' }}>Pan Ocean:</span>
-              <button onClick={() => setCenterLat(l => Math.min(30, l + 5))} style={{ padding: '6px 12px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1' }}>North</button>
-              <button onClick={() => setCenterLat(l => Math.max(5, l - 5))} style={{ padding: '6px 12px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1' }}>South</button>
-              <button onClick={() => setCenterLon(l => Math.max(45, l - 5))} style={{ padding: '6px 12px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1' }}>West</button>
-              <button onClick={() => setCenterLon(l => Math.min(105, l + 5))} style={{ padding: '6px 12px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1' }}>East</button>
-            </div>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            onClick={() => setIsFullScreen(!isFullScreen)}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 20px', background: 'white', border: '1px solid #E2E8F0', color: '#0f172a', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
-          >
-            {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            {isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}
-          </button>
-          <button 
-            onClick={() => navigate('/')} 
-            style={{ padding: '10px 20px', background: 'white', border: '1px solid #E2E8F0', color: '#0f172a', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
-          >
-            Close Viewer
-          </button>
+            
+          {/* Data Panning Controls */}
+          <div style={{ display: 'flex', gap: '4px', marginLeft: '30px', background: '#e0f2fe', padding: '4px', borderRadius: '6px', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#0284c7', padding: '0 6px' }}>Pan:</span>
+            <button onClick={() => setCenterLat(l => Math.min(30, l + 5))} style={{ padding: '4px 8px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1', fontSize: '0.8rem' }}>North</button>
+            <button onClick={() => setCenterLat(l => Math.max(5, l - 5))} style={{ padding: '4px 8px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1', fontSize: '0.8rem' }}>South</button>
+            <button onClick={() => setCenterLon(l => Math.max(45, l - 5))} style={{ padding: '4px 8px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1', fontSize: '0.8rem' }}>West</button>
+            <button onClick={() => setCenterLon(l => Math.min(105, l + 5))} style={{ padding: '4px 8px', background: 'white', border: '1px solid #7dd3fc', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', color: '#0369a1', fontSize: '0.8rem' }}>East</button>
+          </div>
         </div>
       </div>
 
@@ -451,7 +458,7 @@ export default function CinematicView({ lat, lon, date }) {
         gridTemplateColumns: '1fr 1fr',
         gridTemplateRows: '1fr 1fr',
         gap: '15px',
-        padding: '0 20px 20px 20px',
+        padding: '0 10px 10px 10px',
         boxSizing: 'border-box'
       }}>
         {/* Panel 1: Temperature Stack */}

@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: 'Chakra Petch', system-ui, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #040914;
+    color: #e2e8f0;
+  }
+}
+
+.font-display {
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Glassmorphism Sci-Fi Instruments */
+.glass-panel {
+  background: rgba(8, 20, 38, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+}
+
+.glass-panel-glow {
+  background: rgba(8, 28, 48, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  box-shadow: 0 0 25px rgba(20, 184, 166, 0.15), 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Caustics and Water Animations */
+@keyframes causticsWave {
+  0% { transform: scale(1) translate(0, 0) rotate(0deg); opacity: 0.35; }
+  50% { transform: scale(1.08) translate(-2%, 2%) rotate(2deg); opacity: 0.55; }
+  100% { transform: scale(1) translate(0, 0) rotate(0deg); opacity: 0.35; }
+}
+
+.animate-caustics {
+  animation: causticsWave 12s ease-in-out infinite alternate;
+}
+
+@keyframes swayKelp {
+  0% { transform: rotate(-3deg) skewX(-2deg); }
+  50% { transform: rotate(4deg) skewX(3deg); }
+  100% { transform: rotate(-3deg) skewX(-2deg); }
+}
+
+.animate-kelp {
+  transform-origin: bottom center;
+  animation: swayKelp 6s ease-in-out infinite;
+}
+
+@keyframes radarPulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(0.9); opacity: 0; }
+}
+
+.animate-radar-ring {
+  animation: radarPulse 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+}
+
+/* Custom Scrollbar for Depth Navigation */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(3, 7, 18, 0.8);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(45, 212, 191, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(45, 212, 191, 0.6);
+}
