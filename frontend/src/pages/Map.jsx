@@ -109,32 +109,12 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
         <h2 className="section-title" style={{ margin: 0 }}>3D Globe — Ocean Temperature</h2>
         <div style={{ display: "flex", gap: "10px" }}>
-          {selectingTransect && (
-            <span style={{ display: "flex", alignItems: "center", fontSize: "0.85rem", color: "#EAB308", fontWeight: 600 }}>
-              {transectStart ? "Click to set End Point" : "Click to set Start Point"}
-            </span>
-          )}
-          <button
-            onClick={() => {
-              if (viewMode === "2d") { if (transectStart && transectEnd) setViewMode("3d"); else clearTransect(); }
-              else setViewMode("2d");
-            }}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: "var(--primary)", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: 600, color: "white" }}
-          >
-            <Navigation2 size={16} />
-            {viewMode === "2d" ? (transectStart && transectEnd ? "Show 3D Curtain" : "Draw 3D Transect") : "Back to Globe"}
-          </button>
           <button
             onClick={() => navigate("/cinematic")}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: "#F59E0B", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: 600, color: "white" }}
           >
             <Film size={16} /> Launch Cinematic View
           </button>
-          {transectStart && viewMode === "2d" && (
-            <button onClick={clearTransect} style={{ padding: "6px 12px", background: "transparent", border: "1px solid #E2E8F0", borderRadius: "6px", cursor: "pointer", fontWeight: 600, color: "var(--text-main)" }}>
-              Clear Transect
-            </button>
-          )}
         </div>
       </div>
 

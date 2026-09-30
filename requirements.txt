@@ -1,18 +1,9 @@
-# Ocean Deja Vu — Python dependencies
-# Backend (FastAPI serving)
-fastapi>=0.100.0
-uvicorn[standard]>=0.23.0
-numpy>=1.24.0
-scipy>=1.10.0
-pandas>=2.0.0
 
-# ML Pipeline (training — install in pytorch conda env)
-torch>=2.0.0
-lightning>=2.0.0
-scikit-learn>=1.3.0
-zstandard>=0.22.0
-
-# Optional
-plotly>=5.15.0
-httpx>=0.24.0
-tqdm>=4.65.0
+pandas
+numpy
+plotly
+requests
+fastapi
+uvicorn
+httpx
+scipy
