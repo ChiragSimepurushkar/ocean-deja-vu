@@ -110,6 +110,12 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
         <h2 className="section-title" style={{ margin: 0 }}>3D Globe — Ocean Temperature</h2>
         <div style={{ display: "flex", gap: "10px" }}>
           <button
+            onClick={() => navigate("/deepdive")}
+            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: "var(--primary)", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: 600, color: "white" }}
+          >
+            Launch 3D Deep Dive
+          </button>
+          <button
             onClick={() => navigate("/cinematic")}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: "#F59E0B", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: 600, color: "white" }}
           >
