@@ -1,465 +1,369 @@
-import React, { useRef, useMemo, useEffect, useState, Suspense } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Sparkles, MeshDistortMaterial, useGLTF, Html } from '@react-three/drei';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as THREE from 'three';
+import {
+  ArrowLeft,
+  Compass,
+  Lightbulb,
+  MousePointer,
+  Volume2,
+  VolumeX,
+  Box,
+  Layers,
+  Thermometer,
+  Droplets,
+  Gauge,
+  Sun,
+  Anchor,
+  Wind,
+} from 'lucide-react';
+import { Ocean3DScene } from '../components/3d/Ocean3DScene';
+import { ParallaxUnderwaterScene } from '../components/ParallaxUnderwaterScene';
+import { startAmbientOceanDrone, stopAmbientOceanDrone, updateUnderwaterDepthAcoustics } from '../utils/audio';
 import './DeepDive.css';
 
-useGLTF.preload('/fish.glb');
+/* ═══ Ocean Zone Definitions ═══════════════════════════════════ */
+const OCEAN_ZONES = [
+  {
+    id: 'epipelagic',
+    name: 'Epipelagic Zone',
+    layerName: 'Sunlit Surface Layer',
+    depthRange: [0, 60],
+    note: 'Photosynthetically active; wind-driven mixed layer with homogeneous warm temperatures.',
+    icon: '☀️',
+  },
+  {
+    id: 'upper-thermo',
+    name: 'Upper Thermocline',
+    layerName: 'Rapid Thermal Gradient',
+    depthRange: [60, 200],
+    note: 'Steepest temperature gradient; sharp pycnocline barrier inhibiting vertical mixing.',
+    icon: '🌡️',
+  },
+  {
+    id: 'mesopelagic',
+    name: 'Mesopelagic Zone',
+    layerName: 'Twilight Boundary',
+    depthRange: [200, 500],
+    note: 'Residual blue photons only; oxygen minimum zone; diel vertical migration corridor.',
+    icon: '🌊',
+  },
+  {
+    id: 'bathypelagic',
+    name: 'Bathypelagic Zone',
+    layerName: 'Midnight Realm',
+    depthRange: [500, 800],
+    note: 'Complete solar darkness; bioluminescence dominant; cold stable water mass.',
+    icon: '🔦',
+  },
+  {
+    id: 'abyssal',
+    name: 'Abyssal Floor',
+    layerName: 'Hadal Transition',
+    depthRange: [800, 1000],
+    note: 'Extreme hydrostatic pressure, near-freezing temperatures, and chemosynthetic vent ecosystems.',
+    icon: '🌋',
+  },
+];
 
-function useUnderwaterSound() {
-  useEffect(() => {
-    let audioCtx;
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      audioCtx = new AudioContext();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(60, audioCtx.currentTime); 
-      
-      const lfo = audioCtx.createOscillator();
-      const lfoGain = audioCtx.createGain();
-      lfo.type = 'sine';
-      lfo.frequency.setValueAtTime(0.1, audioCtx.currentTime);
-      lfoGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      lfo.connect(lfoGain);
-      lfoGain.connect(gain.gain);
-      
-      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      
-      osc.start();
-      lfo.start();
-      
-      return () => {
-        osc.stop();
-        lfo.stop();
-        audioCtx.close();
-      };
-    } catch (e) {
-      console.warn("Web Audio API not supported", e);
-    }
-  }, []);
+const DEPTH_STOPS = [
+  { label: '0m', depth: 0 },
+  { label: '50m', depth: 50 },
+  { label: '150m', depth: 150 },
+  { label: '300m', depth: 300 },
+  { label: '600m', depth: 600 },
+  { label: '1000m', depth: 1000 },
+];
+
+function getCurrentZone(depth) {
+  for (let i = OCEAN_ZONES.length - 1; i >= 0; i--) {
+    if (depth >= OCEAN_ZONES[i].depthRange[0]) return OCEAN_ZONES[i];
+  }
+  return OCEAN_ZONES[0];
 }
 
-function RealFish({ color, proportions, speed, radius, yOffset, startAngle, scale = 1, offsets, analysisMode, onSelect, selected }) {
-  const group = useRef();
-  const currentPos = useRef(new THREE.Vector3());
-  const targetPos = useRef(new THREE.Vector3());
-  const { scene } = useGLTF('/fish.glb');
-  
-  const clonedScene = useMemo(() => {
-    const clone = scene.clone();
-    clone.traverse((node) => {
-      if (node.isMesh) {
-        node.material = node.material.clone();
-        node.material.color.set(color); 
-        if (selected) {
-          node.material.emissive = new THREE.Color('#00ff00');
-          node.material.emissiveIntensity = 0.5;
-        }
-      }
-    });
-    return clone;
-  }, [scene, color, selected]);
-  
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime() * speed + startAngle;
-    const x = Math.sin(t * 0.5 + offsets[0]) * radius + Math.sin(t * 1.2) * 5;
-    const z = Math.cos(t * 0.4 + offsets[1]) * radius + Math.cos(t * 1.5) * 5;
-    const y = yOffset + Math.sin(t * 0.8 + offsets[2]) * 3;
-    
-    targetPos.current.set(x, y, z);
-    currentPos.current.lerp(targetPos.current, 0.05);
-    group.current.position.copy(currentPos.current);
-    
-    const dir = targetPos.current.clone().sub(currentPos.current).normalize();
-    if (dir.lengthSq() > 0.001) {
-      const targetRotation = Math.atan2(dir.x, dir.z);
-      const diff = targetRotation - group.current.rotation.y;
-      const normalizedDiff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      group.current.rotation.y += normalizedDiff * 0.1;
-    }
-    
-    group.current.rotation.z = Math.sin(t * 25) * 0.15;
-    group.current.rotation.x = Math.sin(t * 10) * 0.05;
-  });
-
-  return (
-    <group ref={group} scale={[scale * 10 * proportions.x, scale * 10 * proportions.y, scale * 10 * proportions.z]}>
-      <primitive 
-        object={clonedScene} 
-        onClick={(e) => {
-          if (analysisMode) {
-            e.stopPropagation();
-            onSelect();
-          }
-        }}
-        onPointerOver={() => {
-          if (analysisMode) document.body.style.cursor = 'crosshair';
-        }}
-        onPointerOut={() => {
-          if (analysisMode) document.body.style.cursor = 'default';
-        }}
-      />
-      {selected && analysisMode && (
-        <Html position={[0, 1.5, 0]} center>
-          <div style={{ background: 'rgba(0,30,60,0.8)', border: '1px solid #00ff00', padding: '10px', borderRadius: '5px', color: '#00ff00', fontFamily: 'monospace', whiteSpace: 'nowrap', pointerEvents: 'none', backdropFilter: 'blur(4px)' }}>
-            <strong>TARGET ACQUIRED</strong><br/>
-            Length: {(scale * 100).toFixed(1)} cm<br/>
-            Est. Mass: {(scale * scale * 15).toFixed(1)} kg<br/>
-            Speed: {(speed * 10).toFixed(1)} knots
-          </div>
-        </Html>
-      )}
-    </group>
-  );
-}
-
-function Octopus({ position, color, scale, analysisMode, onSelect, selected }) {
-  const group = useRef();
-  const tentacles = useRef([]);
-
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
-    group.current.position.y = position[1] + Math.sin(t * 1.5) * 0.5;
-    tentacles.current.forEach((tentacle, i) => {
-      if (tentacle) {
-        tentacle.rotation.z = Math.sin(t * 2 + i) * 0.5;
-        tentacle.rotation.x = Math.cos(t * 2 + i) * 0.5;
-      }
-    });
-  });
-
-  return (
-    <group ref={group} position={position} scale={scale} 
-      onClick={(e) => {
-        if (analysisMode) {
-          e.stopPropagation();
-          onSelect();
-        }
-      }}
-    >
-      <mesh position={[0, 1, 0]}>
-        <sphereGeometry args={[0.8, 32, 32]} />
-        <meshStandardMaterial color={selected && analysisMode ? '#00ff00' : color} roughness={0.6} />
-      </mesh>
-      {[...Array(8)].map((_, i) => (
-        <group key={i} position={[Math.cos((i * Math.PI) / 4) * 0.5, 0.2, Math.sin((i * Math.PI) / 4) * 0.5]}>
-          <group ref={(el) => (tentacles.current[i] = el)}>
-            <mesh position={[0, -1, 0]}>
-              <cylinderGeometry args={[0.2, 0.05, 2]} />
-              <meshStandardMaterial color={selected && analysisMode ? '#00ff00' : color} roughness={0.6} />
-            </mesh>
-          </group>
-        </group>
-      ))}
-      {selected && analysisMode && (
-        <Html position={[0, 2.5, 0]} center>
-          <div style={{ background: 'rgba(0,30,60,0.8)', border: '1px solid #00ff00', padding: '10px', borderRadius: '5px', color: '#00ff00', fontFamily: 'monospace', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
-            <strong>CEPHALOPOD DETECTED</strong><br/>
-            Tentacle Span: {(scale * 2).toFixed(1)} m<br/>
-            Behavior: Foraging
-          </div>
-        </Html>
-      )}
-    </group>
-  );
-}
-
-function Corals() {
-  const corals = useMemo(() => {
-    const arr = [];
-    for (let i = 0; i < 200; i++) {
-      const x = (Math.random() - 0.5) * 400;
-      const z = (Math.random() - 0.5) * 400;
-      arr.push({
-        position: [x, -15, z],
-        scale: Math.random() * 2 + 0.5,
-        color: new THREE.Color().setHSL(Math.random(), 0.8, 0.5)
-      });
-    }
-    return arr;
-  }, []);
-
-  return (
-    <>
-      {corals.map((c, i) => (
-        <group key={i} position={c.position} scale={c.scale}>
-          <mesh position={[0, 0.5, 0]}>
-            <dodecahedronGeometry args={[1, 1]} />
-            <meshStandardMaterial color={c.color} roughness={0.9} />
-          </mesh>
-          <mesh position={[0.5, 1, 0.5]} scale={0.5}>
-            <dodecahedronGeometry args={[1, 1]} />
-            <meshStandardMaterial color={c.color} roughness={0.9} />
-          </mesh>
-          <mesh position={[-0.5, 0.8, -0.5]} scale={0.6}>
-            <dodecahedronGeometry args={[1, 1]} />
-            <meshStandardMaterial color={c.color} roughness={0.9} />
-          </mesh>
-        </group>
-      ))}
-    </>
-  );
-}
-
-function Seagrass() {
-  const meshRef = useRef();
-  const count = 1000;
-  const dummy = useMemo(() => new THREE.Object3D(), []);
-
-  const grasses = useMemo(() => {
-    return Array.from({ length: count }).map(() => ({
-      x: (Math.random() - 0.5) * 400,
-      z: (Math.random() - 0.5) * 400,
-      scale: Math.random() * 2 + 1,
-      offset: Math.random() * 10
-    }));
-  }, []);
-
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
-    grasses.forEach((grass, i) => {
-      dummy.position.set(grass.x, -15 + grass.scale * 1.5, grass.z);
-      dummy.scale.set(0.2, grass.scale, 0.2);
-      dummy.rotation.z = Math.sin(t * 1.5 + grass.offset) * 0.2;
-      dummy.rotation.x = Math.cos(t * 1.2 + grass.offset) * 0.2;
-      dummy.updateMatrix();
-      meshRef.current.setMatrixAt(i, dummy.matrix);
-    });
-    meshRef.current.instanceMatrix.needsUpdate = true;
-  });
-
-  return (
-    <instancedMesh ref={meshRef} args={[null, null, count]}>
-      <cylinderGeometry args={[1, 1, 3]} />
-      <meshStandardMaterial color="#228b22" roughness={0.8} />
-    </instancedMesh>
-  );
-}
-
-function Seabed() {
-  return (
-    <mesh position={[0, -15, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[1000, 1000]} />
-      <meshStandardMaterial color="#0b2447" roughness={1} />
-    </mesh>
-  );
-}
-
-function WaterSurface() {
-  return (
-    <mesh position={[0, 20, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[1000, 1000, 64, 64]} />
-      <MeshDistortMaterial color="#1ea3d8" distort={0.2} speed={1.0} roughness={0.1} metalness={0.8} transparent opacity={0.6} />
-    </mesh>
-  );
-}
-
-function AquaticLife({ analysisMode, selectedId, onSelect }) {
-  const fishes = useMemo(() => {
-    const items = [];
-    const colorPalettes = ['#ffffff', '#ffaa55', '#55aaff', '#ff5555', '#55ffaa', '#aaaaaa'];
-    for (let i = 0; i < 60; i++) { 
-      const scaleBase = Math.random() > 0.8 ? (Math.random() * 1.5 + 1) : (Math.random() * 0.4 + 0.1);
-      items.push({
-        id: 'f'+i,
-        color: colorPalettes[Math.floor(Math.random() * colorPalettes.length)],
-        proportions: { x: 0.5 + Math.random() * 1.0, y: 0.5 + Math.random() * 1.0, z: 0.5 + Math.random() * 1.0 },
-        speed: Math.random() * 0.3 + 0.1,
-        radius: Math.random() * 150 + 10,
-        yOffset: (Math.random() - 0.5) * 30, 
-        startAngle: Math.random() * Math.PI * 2,
-        scale: scaleBase,
-        offsets: [Math.random() * 10, Math.random() * 10, Math.random() * 10]
-      });
-    }
-    return items;
-  }, []);
-
-  const octopuses = useMemo(() => {
-    return Array.from({ length: 8 }).map((_, i) => ({
-      id: 'o'+i,
-      position: [(Math.random() - 0.5) * 200, -13, (Math.random() - 0.5) * 200],
-      color: new THREE.Color().setHSL(Math.random(), 0.6, 0.4),
-      scale: Math.random() * 2 + 1
-    }));
-  }, []);
-
-  return (
-    <>
-      {fishes.map(f => (
-        <RealFish key={f.id} {...f} analysisMode={analysisMode} selected={selectedId === f.id} onSelect={() => onSelect(f.id)} />
-      ))}
-      {octopuses.map(o => (
-        <Octopus key={o.id} {...o} analysisMode={analysisMode} selected={selectedId === o.id} onSelect={() => onSelect(o.id)} />
-      ))}
-    </>
-  );
-}
-
-function CameraController({ movement }) {
-  useFrame(({ camera }) => {
-    const speed = 0.5; 
-    if (movement.forward) camera.translateZ(-speed);
-    if (movement.backward) camera.translateZ(speed);
-    if (movement.left) camera.translateX(-speed);
-    if (movement.right) camera.translateX(speed);
-    if (movement.up) camera.translateY(speed);
-    if (movement.down) camera.translateY(-speed);
-    
-    if (camera.position.y > 18) camera.position.y = 18;
-    if (camera.position.y < -13) camera.position.y = -13;
-  });
-  return null;
-}
-
-export default function DeepDive({ lat, lon }) {
+/* ═══ Component ════════════════════════════════════════════════ */
+export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85.0 }) {
   const navigate = useNavigate();
-  useUnderwaterSound(); 
-  const [movement, setMovement] = useState({ forward: false, backward: false, left: false, right: false, up: false, down: false });
-  const [analysisMode, setAnalysisMode] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
+  const [currentDepth, setCurrentDepth] = useState(0);
+  const [flashlightOn, setFlashlightOn] = useState(true);
+  const [renderMode, setRenderMode] = useState('3d');
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const containerRef = useRef(null);
+  const sliderRef = useRef(null);
+  const isDragging = useRef(false);
 
-  const handleControl = (dir, isDown) => {
-    setMovement(prev => ({ ...prev, [dir]: isDown }));
-  };
+  // ── Audio ──
+  useEffect(() => {
+    if (soundEnabled) startAmbientOceanDrone(true, currentDepth);
+    else stopAmbientOceanDrone();
+    return () => stopAmbientOceanDrone();
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    if (soundEnabled) updateUnderwaterDepthAcoustics(currentDepth);
+  }, [currentDepth, soundEnabled]);
+
+  // ── Mouse wheel scroll ──
+  const handleWheel = useCallback((e) => {
+    const delta = e.deltaY > 0 ? 10 : -10;
+    setCurrentDepth((prev) => Math.max(0, Math.min(1000, prev + delta)));
+  }, []);
+
+  // ── Vertical slider drag ──
+  const handleSliderInteraction = useCallback((clientY) => {
+    if (!sliderRef.current) return;
+    const rect = sliderRef.current.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+    setCurrentDepth(Math.round(ratio * 1000));
+  }, []);
+
+  const handleSliderMouseDown = useCallback((e) => {
+    isDragging.current = true;
+    handleSliderInteraction(e.clientY);
+  }, [handleSliderInteraction]);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isDragging.current) handleSliderInteraction(e.clientY);
+    };
+    const handleMouseUp = () => { isDragging.current = false; };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [handleSliderInteraction]);
+
+  // ── Compute telemetry ──
+  const zone = getCurrentZone(currentDepth);
+  const sst = 29.2 - Math.abs(lat - 12) * 0.25;
+  const tempC = Math.max(2.1, sst - Math.pow(currentDepth / 1000, 0.42) * (sst - 2.1));
+  const pressureAtm = (1.0 + currentDepth / 10.0).toFixed(1);
+  const salinityPsu = (33.8 + Math.min(1.8, (currentDepth / 400) * 1.4)).toFixed(2);
+  const dissolvedO2 = currentDepth < 100 ? '4.8' : currentDepth < 400 ? '1.6' : '3.4';
+  const irradiance = Math.max(0, Math.exp(-currentDepth / 32) * 100).toFixed(1);
+  const soundSpeed = (1449.2 + 4.6 * tempC - 0.055 * tempC * tempC + 0.017 * currentDepth * 0.1).toFixed(0);
+
+  const thumbPercent = (currentDepth / 1000) * 100;
+
+  // No-op discover for decorative creatures
+  const noopDiscover = () => {};
 
   return (
-    <div className="deep-dive-container">
-      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, display: 'flex', gap: '10px' }}>
-        <button onClick={() => {
-          setAnalysisMode(!analysisMode);
-          setSelectedId(null);
-        }} style={{ padding: '10px 20px', borderRadius: '8px', background: analysisMode ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255,255,255,0.2)', border: analysisMode ? '1px solid #00ff00' : '1px solid white', color: analysisMode ? '#00ff00' : 'white', cursor: 'pointer', fontWeight: 'bold', backdropFilter: 'blur(5px)' }}>
-          {analysisMode ? '🔭 Exit Analysis Mode' : '📊 Enter Analysis Mode'}
-        </button>
-        <button className="close-btn" onClick={() => navigate('/')} style={{ position: 'relative', top: 0, right: 0 }}>Back to Map</button>
-      </div>
-      
-      <div className="dd-overlay" style={{ position: 'absolute', top: 0, left: 0, padding: '2rem', zIndex: 1, pointerEvents: 'none' }}>
-        <h1 style={{ margin: 0, fontSize: '2rem', color: 'white', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>Ocean Deja Vu Virtual Dive</h1>
-        <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '1rem', textShadow: '0 1px 5px rgba(0,0,0,0.5)' }}>
-          Exploring infinite ecosystem at {lat.toFixed(2)}°N, {lon.toFixed(2)}°E
-        </p>
+    <div ref={containerRef} onWheel={handleWheel} className="deep-dive-container">
+      {/* ── 3D / 2D Canvas ── */}
+      <div className="dive-canvas-wrap">
+        {renderMode === '3d' ? (
+          <Ocean3DScene
+            currentDepth={currentDepth}
+            onDiscoverSpecies={noopDiscover}
+            discoveredSpeciesIds={[]}
+            flashlightOn={flashlightOn}
+          />
+        ) : (
+          <ParallaxUnderwaterScene
+            currentDepth={currentDepth}
+            onDiscoverSpecies={noopDiscover}
+            discoveredSpeciesIds={[]}
+          />
+        )}
       </div>
 
-      {analysisMode && (() => {
-        // Generate deterministic, unique data based on exact lat/lon coordinates
-        const pseudoRandom = (seed) => {
-          const x = Math.sin(lat * 12.9898 + lon * 78.233 + seed) * 43758.5453;
-          return x - Math.floor(x);
-        };
-        
-        const temp = (28 - (Math.abs(lat) / 3) + (pseudoRandom(1) * 6 - 3)).toFixed(1);
-        const salinity = (33.5 + pseudoRandom(2) * 3).toFixed(2);
-        const ph = (7.8 + pseudoRandom(3) * 0.5).toFixed(2);
-        const pressure = (1.5 + pseudoRandom(4) * 4).toFixed(1);
-        
-        const pelagicLevel = pseudoRandom(5);
-        const benthicLevel = pseudoRandom(6);
-        
-        return (
-          <div style={{ position: 'absolute', top: '150px', left: '2rem', width: '300px', background: 'rgba(0, 20, 40, 0.7)', border: '1px solid #00aaff', borderRadius: '12px', padding: '1.5rem', color: '#00aaff', zIndex: 10, backdropFilter: 'blur(10px)', fontFamily: 'monospace' }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#00ffaa', borderBottom: '1px solid #00aaff', paddingBottom: '0.5rem' }}>ENVIRONMENT TELEMETRY</h3>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Temp:</span> <span style={{ color: 'white' }}>{temp}°C</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Salinity:</span> <span style={{ color: 'white' }}>{salinity} PSU</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>pH Level:</span> <span style={{ color: 'white' }}>{ph}</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>Pressure:</span> <span style={{ color: 'white' }}>{pressure} atm</span></div>
-            
-            <h4 style={{ margin: '1.5rem 0 0.5rem 0', color: '#00ffaa' }}>BIOMASS SCANNER</h4>
-            <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <span>Pelagic Fish</span> 
-                <span>{pelagicLevel > 0.7 ? 'High' : pelagicLevel > 0.4 ? 'Moderate' : 'Low'}</span>
-              </div>
-              <div style={{ height: '6px', background: '#003366', borderRadius: '3px', overflow: 'hidden', marginTop: '2px' }}>
-                <div style={{ width: `${pelagicLevel * 100}%`, height: '100%', background: pelagicLevel > 0.7 ? '#00ffaa' : pelagicLevel > 0.4 ? '#ffaa00' : '#ff4444' }}></div>
-              </div>
-            </div>
-            <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <span>Benthic Fauna</span> 
-                <span>{benthicLevel > 0.7 ? 'High' : benthicLevel > 0.4 ? 'Moderate' : 'Low'}</span>
-              </div>
-              <div style={{ height: '6px', background: '#003366', borderRadius: '3px', overflow: 'hidden', marginTop: '2px' }}>
-                <div style={{ width: `${benthicLevel * 100}%`, height: '100%', background: benthicLevel > 0.7 ? '#00ffaa' : benthicLevel > 0.4 ? '#ffaa00' : '#ff4444' }}></div>
-              </div>
-            </div>
-            <p style={{ marginTop: '1.5rem', fontSize: '0.8rem', color: '#aaaaaa' }}>* Click on any organism in the water to run a biological scan.</p>
+      {/* ── Top Navigation Bar ── */}
+      <div className="dd-top-bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <button onClick={() => navigate('/')} className="dd-btn" title="Back to Dashboard">
+            <ArrowLeft size={15} />
+            <span>Dashboard</span>
+          </button>
+          <div className="dd-badge">
+            <Compass size={13} color="#38bdf8" />
+            <span>{lat.toFixed(2)}°N, {lon.toFixed(2)}°E</span>
           </div>
-        );
-      })()}
+          <div className="dd-badge">
+            <span style={{ color: '#38bdf8', fontWeight: 700 }}>DATE</span>
+            <span>{date}</span>
+          </div>
+        </div>
 
-      <div style={{ position: 'absolute', bottom: '40px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            style={{ padding: '15px 25px', borderRadius: '8px', background: 'rgba(255,255,255,0.2)', border: '1px solid white', color: 'white', cursor: 'pointer', fontSize: '1.2rem', backdropFilter: 'blur(5px)' }}
-            onPointerDown={() => handleControl('forward', true)}
-            onPointerUp={() => handleControl('forward', false)}
-            onPointerLeave={() => handleControl('forward', false)}
-          >⬆️ Forward</button>
-        </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            style={{ padding: '15px 25px', borderRadius: '8px', background: 'rgba(255,255,255,0.2)', border: '1px solid white', color: 'white', cursor: 'pointer', fontSize: '1.2rem', backdropFilter: 'blur(5px)' }}
-            onPointerDown={() => handleControl('left', true)}
-            onPointerUp={() => handleControl('left', false)}
-            onPointerLeave={() => handleControl('left', false)}
-          >⬅️ Left</button>
-          <button 
-            style={{ padding: '15px 25px', borderRadius: '8px', background: 'rgba(255,255,255,0.2)', border: '1px solid white', color: 'white', cursor: 'pointer', fontSize: '1.2rem', backdropFilter: 'blur(5px)' }}
-            onPointerDown={() => handleControl('backward', true)}
-            onPointerUp={() => handleControl('backward', false)}
-            onPointerLeave={() => handleControl('backward', false)}
-          >⬇️ Backward</button>
-          <button 
-            style={{ padding: '15px 25px', borderRadius: '8px', background: 'rgba(255,255,255,0.2)', border: '1px solid white', color: 'white', cursor: 'pointer', fontSize: '1.2rem', backdropFilter: 'blur(5px)' }}
-            onPointerDown={() => handleControl('right', true)}
-            onPointerUp={() => handleControl('right', false)}
-            onPointerLeave={() => handleControl('right', false)}
-          >➡️ Right</button>
-        </div>
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-          <button 
-            style={{ padding: '10px 20px', borderRadius: '8px', background: 'rgba(96,165,250,0.3)', border: '1px solid #60A5FA', color: 'white', cursor: 'pointer', fontSize: '1rem', backdropFilter: 'blur(5px)' }}
-            onPointerDown={() => handleControl('up', true)}
-            onPointerUp={() => handleControl('up', false)}
-            onPointerLeave={() => handleControl('up', false)}
-          >🔼 Swim Up</button>
-          <button 
-            style={{ padding: '10px 20px', borderRadius: '8px', background: 'rgba(96,165,250,0.3)', border: '1px solid #60A5FA', color: 'white', cursor: 'pointer', fontSize: '1rem', backdropFilter: 'blur(5px)' }}
-            onPointerDown={() => handleControl('down', true)}
-            onPointerUp={() => handleControl('down', false)}
-            onPointerLeave={() => handleControl('down', false)}
-          >🔽 Swim Down</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <button
+            onClick={() => setRenderMode(renderMode === '3d' ? '2d' : '3d')}
+            className={`dd-btn ${renderMode === '3d' ? 'dd-btn-active' : ''}`}
+          >
+            {renderMode === '3d' ? <Box size={14} /> : <Layers size={14} />}
+            <span>{renderMode === '3d' ? '3D Spatial' : '2D View'}</span>
+          </button>
+          <button
+            onClick={() => setFlashlightOn(!flashlightOn)}
+            className={`dd-btn ${flashlightOn ? 'dd-btn-active' : ''}`}
+          >
+            <Lightbulb size={14} color={flashlightOn ? '#fde047' : '#64748b'} />
+            <span>{flashlightOn ? 'ON' : 'OFF'}</span>
+          </button>
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`dd-btn ${soundEnabled ? 'dd-btn-active' : ''}`}
+          >
+            {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+          </button>
         </div>
       </div>
 
-      <Canvas camera={{ position: [0, 0, 15], fov: 60, far: 500 }} style={{ background: '#001a33' }}>
-        <CameraController movement={movement} />
-        
-        <fog attach="fog" args={['#001a33', 10, 80]} />
-        
-        <ambientLight intensity={0.5} color="#4dc0ff" />
-        <directionalLight position={[0, 20, 0]} intensity={3} color="#ffffff" castShadow />
-        <pointLight position={[0, -10, 0]} intensity={1} color="#0044ff" />
+      {/* ── Instruction ── */}
+      <div className="dd-instruction-badge">
+        <MousePointer size={13} />
+        <span>Scroll to dive · Drag depth bar on right</span>
+      </div>
 
-        <Seabed />
-        <Seagrass />
-        <Corals />
-        <WaterSurface />
-        <Suspense fallback={null}>
-          <AquaticLife analysisMode={analysisMode} selectedId={selectedId} onSelect={setSelectedId} />
-        </Suspense>
-        
-        <Sparkles count={5000} scale={200} size={4} speed={0.4} opacity={0.5} color="#aaddff" />
-        <Sparkles count={10000} scale={400} size={1} speed={0.1} opacity={0.2} color="#ffffff" />
-      </Canvas>
+      {/* ── Center Watermark: big depth + zone ── */}
+      <div className="dd-layer-card" key={zone.id}>
+        <div className="dd-layer-depth">{currentDepth}m</div>
+        <div className="dd-layer-zone-name">{zone.name}</div>
+      </div>
+
+      {/* ── LEFT: Telemetry Panel ── */}
+      <div className="dd-telemetry-panel dd-glass">
+        <div className="dd-panel-header">
+          <div className="dd-panel-title">Hydrostatic Telemetry</div>
+          <div className="dd-status-dot">LIVE</div>
+        </div>
+
+        {/* Primary metrics */}
+        <div className="dd-metrics-grid">
+          <div className="dd-metric">
+            <div className="dd-metric-label">
+              <Thermometer size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
+              Temperature
+            </div>
+            <div className="dd-metric-value">
+              {tempC.toFixed(1)}<span className="unit">°C</span>
+            </div>
+          </div>
+          <div className="dd-metric">
+            <div className="dd-metric-label">
+              <Gauge size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
+              Pressure
+            </div>
+            <div className="dd-metric-value">
+              {pressureAtm}<span className="unit">atm</span>
+            </div>
+          </div>
+          <div className="dd-metric">
+            <div className="dd-metric-label">
+              <Droplets size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
+              Salinity
+            </div>
+            <div className="dd-metric-value">
+              {salinityPsu}<span className="unit">psu</span>
+            </div>
+          </div>
+          <div className="dd-metric">
+            <div className="dd-metric-label">
+              <Wind size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '3px' }} />
+              Dissolved O₂
+            </div>
+            <div className="dd-metric-value">
+              {dissolvedO2}<span className="unit">mL/L</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary metrics */}
+        <div className="dd-secondary-metrics">
+          <div className="dd-secondary-metric">
+            <div className="dd-secondary-metric-label">
+              <Sun size={9} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '2px' }} />
+              Light
+            </div>
+            <div className="dd-secondary-metric-value">{irradiance}%</div>
+          </div>
+          <div className="dd-secondary-metric">
+            <div className="dd-secondary-metric-label">
+              <Anchor size={9} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '2px' }} />
+              Sound Vel.
+            </div>
+            <div className="dd-secondary-metric-value">{soundSpeed} m/s</div>
+          </div>
+          <div className="dd-secondary-metric">
+            <div className="dd-secondary-metric-label">Δ SST</div>
+            <div className="dd-secondary-metric-value">-{(sst - tempC).toFixed(1)}°</div>
+          </div>
+        </div>
+
+        {/* Stratum info */}
+        <div className="dd-stratum-block">
+          <div className="dd-stratum-zone">{zone.icon} {zone.id}</div>
+          <div className="dd-stratum-name">{zone.layerName}</div>
+          <div className="dd-stratum-note">{zone.note}</div>
+        </div>
+      </div>
+
+      {/* ── RIGHT: Vertical Depth Rail ── */}
+      <div className="dd-depth-rail dd-glass" style={{ padding: '0.75rem 0.5rem', width: '72px' }}>
+        <div className="dd-depth-label-top">0 m</div>
+
+        <div
+          ref={sliderRef}
+          className="dd-depth-slider"
+          onMouseDown={handleSliderMouseDown}
+          style={{ flex: 1, width: '100%', position: 'relative', cursor: 'pointer' }}
+        >
+          {/* Gradient track */}
+          <div className="dd-depth-slider-track" />
+
+          {/* Zone tick marks */}
+          {OCEAN_ZONES.map((z) => {
+            const pct = (z.depthRange[0] / 1000) * 100;
+            return (
+              <div
+                key={z.id}
+                style={{
+                  position: 'absolute',
+                  right: '22px',
+                  top: `${pct}%`,
+                  transform: 'translateY(-50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  pointerEvents: 'none',
+                }}
+              >
+                <span style={{ fontSize: '0.5rem', color: 'rgba(148,163,184,0.5)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                  {z.depthRange[0]}
+                </span>
+                <span style={{ width: '8px', height: '1px', background: 'rgba(56,189,248,0.25)', display: 'block' }} />
+              </div>
+            );
+          })}
+
+          {/* Draggable thumb */}
+          <div
+            className="dd-depth-slider-thumb"
+            style={{ top: `${thumbPercent}%` }}
+          >
+            <div className="dd-depth-readout">
+              {currentDepth}m
+            </div>
+          </div>
+        </div>
+
+        <div className="dd-depth-label-bottom">1000 m</div>
+      </div>
+
+      {/* ── Bottom Center: Quick Jump Buttons ── */}
+      <div className="dd-bottom-controls">
+        {DEPTH_STOPS.map((stop) => (
+          <button
+            key={stop.depth}
+            onClick={() => setCurrentDepth(stop.depth)}
+            className={`dd-layer-pill ${Math.abs(currentDepth - stop.depth) < 35 ? 'active' : ''}`}
+          >
+            {stop.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
