@@ -8,12 +8,14 @@ import { MarineSnow3D } from './MarineSnow3D';
 import { Creatures3D } from './Creatures3D';
 import { OceanDepthMarkers } from './OceanDepthMarkers';
 import { MarineSpecies } from '../../types';
+import { DiveConfig } from '../../utils/buildDiveConfig';
 
 interface Ocean3DSceneProps {
   currentDepth: number;
   onDiscoverSpecies: (species: MarineSpecies) => void;
   discoveredSpeciesIds: string[];
   flashlightOn?: boolean;
+  config: DiveConfig;
 }
 
 export const Ocean3DScene: React.FC<Ocean3DSceneProps> = ({
@@ -21,6 +23,7 @@ export const Ocean3DScene: React.FC<Ocean3DSceneProps> = ({
   onDiscoverSpecies,
   discoveredSpeciesIds,
   flashlightOn = true,
+  config,
 }) => {
   const [webglError, setWebglError] = useState(false);
 
@@ -81,20 +84,21 @@ export const Ocean3DScene: React.FC<Ocean3DSceneProps> = ({
           <OceanSubmarineLight currentDepth={currentDepth} enabled={flashlightOn} />
 
           {/* Dynamic canyon environment, fog, god-rays */}
-          <OceanEnvironment currentDepth={currentDepth} />
+          <OceanEnvironment currentDepth={currentDepth} config={config} />
 
           {/* Drifting marine snow particles */}
-          <MarineSnow3D currentDepth={currentDepth} count={1400} />
+          <MarineSnow3D currentDepth={currentDepth} count={1400} config={config} />
 
           {/* 10 animated creature types — purely decorative, no click */}
           <Creatures3D
             currentDepth={currentDepth}
             onDiscoverSpecies={onDiscoverSpecies}
             discoveredSpeciesIds={discoveredSpeciesIds}
+            config={config}
           />
 
           {/* Subtle sonar depth rings — no HTML labels */}
-          <OceanDepthMarkers currentDepth={currentDepth} />
+          <OceanDepthMarkers currentDepth={currentDepth} config={config} />
 
           {/* Bloom post-processing for bioluminescence */}
           <EffectComposer>

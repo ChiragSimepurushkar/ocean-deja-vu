@@ -2,12 +2,15 @@ import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
+import { DiveConfig } from '../../utils/buildDiveConfig';
+
 interface MarineSnow3DProps {
   currentDepth: number; // 0 to 1000m
   count?: number;
+  config: DiveConfig;
 }
 
-export const MarineSnow3D: React.FC<MarineSnow3DProps> = ({ currentDepth, count = 1200 }) => {
+export const MarineSnow3D: React.FC<MarineSnow3DProps> = ({ currentDepth, count = 1200, config }) => {
   const pointsRef = useRef<THREE.Points>(null);
 
   // Generate initial particle positions across depth range
@@ -89,7 +92,7 @@ export const MarineSnow3D: React.FC<MarineSnow3DProps> = ({ currentDepth, count 
         size={currentDepth > 300 ? 0.35 : 0.22}
         color={currentDepth > 400 ? '#a5f3fc' : '#e0f2fe'}
         transparent
-        opacity={currentDepth > 300 ? 0.75 : 0.45}
+        opacity={(currentDepth > 300 ? 0.75 : 0.45) * (1 / config.visibility)}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />

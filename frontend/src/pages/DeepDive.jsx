@@ -8,6 +8,7 @@ import { Ocean3DScene } from '../components/3d/Ocean3DScene';
 import { ParallaxUnderwaterScene } from '../components/ParallaxUnderwaterScene';
 import { startAmbientOceanDrone, stopAmbientOceanDrone, updateUnderwaterDepthAcoustics } from '../utils/audio';
 import { getProfile } from '../api';
+import { buildDiveConfig } from '../utils/buildDiveConfig';
 import './DeepDive.css';
 
 const OCEAN_ZONES = [
@@ -169,6 +170,8 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
   const irradiance = Math.max(0, Math.exp(-currentDepth / 32) * 100).toFixed(1);
   const soundSpeed = (1449.2 + 4.6 * tempC - 0.055 * tempC * tempC + 0.017 * currentDepth * 0.1).toFixed(0);
 
+  const config = buildDiveConfig({ lat, lon, date, profile });
+
   const thumbPercent = (currentDepth / 1000) * 100;
   const noopDiscover = () => {};
 
@@ -183,6 +186,7 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
             onDiscoverSpecies={noopDiscover}
             discoveredSpeciesIds={[]}
             flashlightOn={flashlightOn}
+            config={config}
           />
         ) : (
           <ParallaxUnderwaterScene

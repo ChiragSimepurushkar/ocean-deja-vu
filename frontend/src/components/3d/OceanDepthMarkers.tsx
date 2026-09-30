@@ -1,8 +1,11 @@
 import React from 'react';
 import * as THREE from 'three';
 
+import { DiveConfig } from '../../utils/buildDiveConfig';
+
 interface OceanDepthMarkersProps {
   currentDepth: number;
+  config: DiveConfig;
 }
 
 const MARKERS = [
@@ -15,21 +18,26 @@ const MARKERS = [
   { depth: 1000, y: -200 },
 ];
 
-export const OceanDepthMarkers: React.FC<OceanDepthMarkersProps> = ({ currentDepth }) => {
+export const OceanDepthMarkers: React.FC<OceanDepthMarkersProps> = ({ currentDepth, config }) => {
+  const dynamicMarkers = [...MARKERS];
+  if (config.thermoclineDepth) {
+    dynamicMarkers.push({ depth: config.thermoclineDepth, y: -(config.thermoclineDepth / 1000) * 200, isThermo: true });
+  }
   return (
     <group>
-      {MARKERS.map((m) => {
+      {dynamicMarkers.map((m, idx) => {
         const isCurrent = Math.abs(currentDepth - m.depth) < 40;
+        const color = m.isThermo ? '#f59e0b' : (isCurrent ? '#38bdf8' : '#0369a1');
 
         return (
-          <group key={m.depth} position={[0, m.y, -12]}>
+          <group key={`${m.depth}-${idx}`} position={[0, m.y, -12]}>
             {/* Sonar ring — purely visual, no text */}
             <mesh rotation={[Math.PI / 2, 0, 0]}>
               <ringGeometry args={[14, 14.15, 64]} />
               <meshBasicMaterial
-                color={isCurrent ? '#38bdf8' : '#0369a1'}
+                color={color}
                 transparent
-                opacity={isCurrent ? 0.55 : 0.18}
+                opacity={m.isThermo ? 0.8 : (isCurrent ? 0.55 : 0.18)}
                 side={THREE.DoubleSide}
               />
             </mesh>
@@ -38,9 +46,9 @@ export const OceanDepthMarkers: React.FC<OceanDepthMarkersProps> = ({ currentDep
             <mesh position={[0, 0, 0]}>
               <sphereGeometry args={[0.2, 8, 8]} />
               <meshBasicMaterial
-                color={isCurrent ? '#7dd3fc' : '#0369a1'}
+                color={m.isThermo ? '#fbbf24' : (isCurrent ? '#7dd3fc' : '#0369a1')}
                 transparent
-                opacity={isCurrent ? 0.9 : 0.4}
+                opacity={m.isThermo ? 1 : (isCurrent ? 0.9 : 0.4)}
               />
             </mesh>
           </group>
