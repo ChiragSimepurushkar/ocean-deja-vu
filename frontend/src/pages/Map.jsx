@@ -223,13 +223,34 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
             pointAltitude={0.005}
             pointRadius={0.25}
             pointColor={d => {
-              const t = Math.max(0, Math.min(1, (d.temp - 25) / 7));
-              return `hsla(${240 - t * 240}, 100%, 50%, 0.8)`; // Blue to Red
+              // Normalize SST between 24°C and 31°C
+              const t = Math.max(0, Math.min(1, (d.temp - 24) / 7));
+              
+              // Custom Sequential Thermal Scale (Blue -> Cyan -> Yellow -> Red)
+              if (t < 0.33) {
+                 const r = 0;
+                 const g = Math.floor((t / 0.33) * 255);
+                 const b = 255;
+                 return `rgba(${r},${g},${b},0.55)`;
+              } else if (t < 0.66) {
+                 const t2 = (t - 0.33) / 0.33;
+                 const r = Math.floor(t2 * 255);
+                 const g = 255;
+                 const b = Math.floor((1 - t2) * 255);
+                 return `rgba(${r},${g},${b},0.55)`;
+              } else {
+                 const t2 = (t - 0.66) / 0.34;
+                 const r = 255;
+                 const g = Math.floor((1 - t2) * 255);
+                 const b = 0;
+                 return `rgba(${r},${g},${b},0.55)`;
+              }
             }}
             pointResolution={12}
             width={isFullScreen ? window.innerWidth : (containerWidth || 400)}
             height={isFullScreen ? window.innerHeight : 450}
             onGlobeClick={handleGlobeClick}
+            onPointClick={(point) => handleGlobeClick({ lat: point.lat, lng: point.lng })}
           />
         )}
 
