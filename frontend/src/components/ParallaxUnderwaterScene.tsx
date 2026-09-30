@@ -671,8 +671,11 @@ export const ParallaxUnderwaterScene: React.FC<ParallaxUnderwaterSceneProps> = (
 
       {/* 2D Flashlight Overlay for Deep Zones */}
       <div 
-        className="absolute inset-0 pointer-events-none transition-all duration-500 z-[40]"
         style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          pointerEvents: 'none',
+          zIndex: 40,
+          transition: 'all 0.5s ease',
           opacity: currentDepth > 200 ? Math.min(1, (currentDepth - 200) / 200) : 0,
           background: flashlightOn 
             ? 'radial-gradient(circle at 50% 50%, rgba(200,240,255,0.1) 0%, transparent 20%, rgba(2,6,23,0.85) 50%, rgba(2,6,23,0.98) 100%)' 
