@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getField } from '../api';
 
 const cache = {};
 
@@ -17,11 +18,7 @@ export function useOceanDataset(date) {
     }
 
     setLoading(true);
-    fetch(`/data/${date}.json`)
-      .then(res => {
-        if (!res.ok) throw new Error('Data not found for date: ' + date);
-        return res.json();
-      })
+    getField(date, "0")
       .then(json => {
         cache[date] = json;
         setData(json);

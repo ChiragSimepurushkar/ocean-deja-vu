@@ -18,23 +18,24 @@ const generateCurtainData = (start, end, timeOffset, oceanData) => {
     const lon = start[0] + (end[0] - start[0]) * fraction;
     const lat = start[1] + (end[1] - start[1]) * fraction;
     
-    depths.forEach((depth, dIdx) => {
-      let temp = 25 - (depth / 1000) * 22; // fallback base temp
-      if (oceanData && oceanData.reconstructed) {
-         const latIdx = Math.max(0, Math.min(99, Math.round((lat - 5) / 0.25)));
-         const lonIdx = Math.max(0, Math.min(239, Math.round((lon - 45) / 0.25)));
-         
-         const tData = oceanData.reconstructed.temperature[dIdx];
-         if (tData && tData[latIdx] && tData[latIdx][lonIdx] !== null) {
-            temp = tData[latIdx][lonIdx];
-         }
-      }
+    let sst = 28;
+    if (oceanData && oceanData.data) {
+       const latIdx = Math.max(0, Math.min(oceanData.lat.length - 1, Math.round((lat - oceanData.lat[0]) / (oceanData.lat[1] - oceanData.lat[0]))));
+       const lonIdx = Math.max(0, Math.min(oceanData.lon.length - 1, Math.round((lon - oceanData.lon[0]) / (oceanData.lon[1] - oceanData.lon[0]))));
+       if (oceanData.data[latIdx] && oceanData.data[latIdx][lonIdx] !== null) {
+          sst = oceanData.data[latIdx][lonIdx];
+       }
+    }
+
+    depths.forEach((depth) => {
+      // Approximate vertical profile based on surface temp
+      let temp = (sst - 4.2) * Math.exp(-depth / 240.0) + 4.2;
       
       // Subtracting timeOffset from the fraction makes the waves "flow" horizontally
       temp = temp + Math.sin((fraction * Math.PI * 4) - timeOffset) * 1.5;
       
       points.push({
-        position: [lon, lat, -depth * zExaggeration / 1000 * 5], // adjust depth scaling for visual
+        position: [lon, lat, -depth * zExaggeration / 1000 * 5],
         temperature: temp,
         depth: depth
       });

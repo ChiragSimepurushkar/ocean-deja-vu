@@ -7,7 +7,7 @@ import {
 import { Ocean3DScene } from '../components/3d/Ocean3DScene';
 import { ParallaxUnderwaterScene } from '../components/ParallaxUnderwaterScene';
 import { startAmbientOceanDrone, stopAmbientOceanDrone, updateUnderwaterDepthAcoustics } from '../utils/audio';
-import { useOceanDataset } from '../hooks/useOceanDataset';
+import { getProfile } from '../api';
 import './DeepDive.css';
 
 const OCEAN_ZONES = [
@@ -133,8 +133,11 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
     };
   }, [handleSliderInteraction]);
 
-  // Fetch real dataset
-  const { data: oceanData, loading } = useOceanDataset(date);
+  // Fetch real dataset profile
+  const [profile, setProfile] = useState(null);
+  useEffect(() => {
+    getProfile(date, lat, lon).then(setProfile).catch(console.error);
+  }, [date, lat, lon]);
 
   // Telemetry calculations
   const zone = getCurrentZone(currentDepth);
@@ -144,10 +147,8 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
   let salinityPsu = (33.8 + Math.min(1.8, (currentDepth / 400) * 1.4));
   let curMps = 0;
   
-  if (oceanData && oceanData.reconstructed) {
-    const latIdx = Math.max(0, Math.min(99, Math.round((lat - 5) / 0.25)));
-    const lonIdx = Math.max(0, Math.min(239, Math.round((lon - 45) / 0.25)));
-    const depths = oceanData.depths || [0,5,10,20,30,50,75,100,125,150,200,300,500,700,1000];
+  if (profile) {
+    const depths = profile.depths;
     
     // Find closest depth index
     let closestDIdx = 0;
@@ -159,17 +160,8 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
        }
     });
     
-    const tData = oceanData.reconstructed.temperature[closestDIdx];
-    const sData = oceanData.reconstructed.salinity[closestDIdx];
-    const cData = oceanData.reconstructed.currents[closestDIdx];
-    
-    if (oceanData.surface && oceanData.surface.sst && oceanData.surface.sst[latIdx]) {
-       sst = oceanData.surface.sst[latIdx][lonIdx] || sst;
-    }
-    
-    if (tData && tData[latIdx]) tempC = tData[latIdx][lonIdx] || tempC;
-    if (sData && sData[latIdx]) salinityPsu = sData[latIdx][lonIdx] || salinityPsu;
-    if (cData && cData[latIdx]) curMps = cData[latIdx][lonIdx] || curMps;
+    tempC = profile.temp_pred[closestDIdx] || tempC;
+    sst = profile.temp_pred[0] || sst;
   }
 
   const pressureAtm = (1.0 + currentDepth / 10.0).toFixed(1);
@@ -218,6 +210,13 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
             <span className="dd-badge-key">DATE</span>
             <span>{date}</span>
           </div>
+          <button
+            onClick={() => navigate(`/cinematic?lat=${lat}&lon=${lon}&date=${date}`)}
+            className="dd-btn"
+            style={{ marginLeft: '10px', background: '#F59E0B', color: 'white', border: 'none', fontWeight: 600 }}
+          >
+            Launch Cinematic View
+          </button>
         </div>
 
         {/* Right: mode toggles */}

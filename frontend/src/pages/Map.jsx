@@ -5,6 +5,7 @@ import Globe from "react-globe.gl";
 import { getAdvisory } from "../api";
 import CurtainView from "../components/CurtainView";
 import { useOceanDataset } from "../hooks/useOceanDataset";
+import { buildSstTexture } from "../utils/buildSstTexture";
 
 export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, lon, setLon }) {
   const [advisory, setAdvisory] = useState(null);
@@ -38,23 +39,10 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
     getAdvisory(date, lat, lon).then(setAdvisory).catch(console.error);
   }, [date, lat, lon]);
 
-  const hexData = React.useMemo(() => {
-    if (!oceanData || !oceanData.surface || !oceanData.surface.sst) return [];
-    const data = [];
-    const latStart = oceanData.grid.latMin;
-    const lonStart = oceanData.grid.lonMin;
-    const res = oceanData.grid.resolution;
-    const sst = oceanData.surface.sst;
-
-    for (let y = 0; y < sst.length; y++) {
-      for (let x = 0; x < sst[y].length; x++) {
-        const val = sst[y][x];
-        if (val !== null && val !== undefined) {
-           data.push({ lat: latStart + y * res, lng: lonStart + x * res, temp: val });
-        }
-      }
-    }
-    return data;
+  const [texture, setTexture] = useState(null);
+  useEffect(() => {
+    if (!oceanData?.data) return; // wait for field data
+    buildSstTexture(oceanData).then(setTexture).catch(console.error);
   }, [oceanData]);
 
   const clearTransect = () => {
@@ -130,20 +118,6 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
         <h2 className="section-title" style={{ margin: 0 }}>3D Globe — Ocean Temperature</h2>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            onClick={() => navigate("/deepdive")}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: "var(--primary)", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: 600, color: "white" }}
-          >
-            Launch 3D Deep Dive
-          </button>
-          <button
-            onClick={() => navigate("/cinematic")}
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: "#F59E0B", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: 600, color: "white" }}
-          >
-            <Film size={16} /> Launch Cinematic View
-          </button>
-        </div>
       </div>
 
       <div
@@ -215,42 +189,15 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
           <div style={{ color: "#aef", fontFamily: "monospace" }}>Loading…</div>
         ) : (
           <Globe
-            globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+            globeImageUrl={texture || "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"}
+            bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
             backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-            pointsData={hexData}
-            pointLat="lat"
-            pointLng="lng"
-            pointAltitude={0.005}
-            pointRadius={0.25}
-            pointColor={d => {
-              // Normalize SST between 24°C and 31°C
-              const t = Math.max(0, Math.min(1, (d.temp - 24) / 7));
-              
-              // Custom Sequential Thermal Scale (Blue -> Cyan -> Yellow -> Red)
-              if (t < 0.33) {
-                 const r = 0;
-                 const g = Math.floor((t / 0.33) * 255);
-                 const b = 255;
-                 return `rgba(${r},${g},${b},0.55)`;
-              } else if (t < 0.66) {
-                 const t2 = (t - 0.33) / 0.33;
-                 const r = Math.floor(t2 * 255);
-                 const g = 255;
-                 const b = Math.floor((1 - t2) * 255);
-                 return `rgba(${r},${g},${b},0.55)`;
-              } else {
-                 const t2 = (t - 0.66) / 0.34;
-                 const r = 255;
-                 const g = Math.floor((1 - t2) * 255);
-                 const b = 0;
-                 return `rgba(${r},${g},${b},0.55)`;
-              }
-            }}
-            pointResolution={12}
+            showAtmosphere={true}
+            atmosphereColor="#7fb8ff"
+            atmosphereAltitude={0.15}
             width={isFullScreen ? window.innerWidth : (containerWidth || 400)}
             height={isFullScreen ? window.innerHeight : 450}
             onGlobeClick={handleGlobeClick}
-            onPointClick={(point) => handleGlobeClick({ lat: point.lat, lng: point.lng })}
           />
         )}
 

@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { Maximize2, Minimize2, Search, Crosshair, ArrowUpRight, ArrowDownRight, Navigation2, Thermometer, Droplets, Wind, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Play, Square, ChevronUp, ChevronDown, ArrowUpLeft, ArrowDownLeft, Info } from 'lucide-react';
 import { gsap } from 'gsap';
 import { Tooltip } from '../components/Tooltip';
-import { useOceanDataset } from '../hooks/useOceanDataset';
 import './DeepDive.css';
 
 const DEPTHS = [0, 50, 100, 200, 500, 1000];
@@ -34,14 +33,14 @@ const Sparkline = ({ data, color }) => {
   );
 };
 
-export default function CinematicView() {
+export default function CinematicView({ date, lat, lon }) {
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(window.location.search);
-  const initialLat = parseFloat(searchParams.get('lat') || 15);
-  const initialLon = parseFloat(searchParams.get('lon') || 65);
-  const selectedDate = searchParams.get('date') || '2023-01-01';
+  const initialLat = parseFloat(searchParams.get('lat') || lat || 15);
+  const initialLon = parseFloat(searchParams.get('lon') || lon || 65);
+  const selectedDate = searchParams.get('date') || date || '2023-06-01';
 
-  const { data: oceanData, loading } = useOceanDataset(selectedDate);
+  const [loading, setLoading] = useState(true);
   const [layersData, setLayersData] = useState([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
   
@@ -62,25 +61,22 @@ export default function CinematicView() {
   const timelineRef = useRef(null);
   
   useEffect(() => {
-    if (oceanData && oceanData.reconstructed) {
-       const mappedLayers = DEPTHS.map((d, i) => {
-         // Create mock structures that match what the app expects based on JSON schema
-         const lats = Array.from({length: 100}, (_, idx) => 5 + idx * 0.25);
-         const lons = Array.from({length: 240}, (_, idx) => 45 + idx * 0.25);
-         let dataGrid = oceanData.reconstructed.temperature[i];
-         if (!dataGrid || dataGrid.length === 0) {
-             // Fallback if our mock data generator arrays are empty
-             dataGrid = lats.map(() => lons.map(() => 0));
-         }
-         return {
-           lat: lats,
-           lon: lons,
-           data: dataGrid
-         };
-       });
-       setLayersData(mappedLayers);
-    }
-  }, [oceanData]);
+    setLoading(true);
+    Promise.all(DEPTHS.map(d => getField(selectedDate, d.toString())))
+      .then(responses => {
+        const mappedLayers = responses.map(res => ({
+          lat: res.lat,
+          lon: res.lon,
+          data: res.data
+        }));
+        setLayersData(mappedLayers);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [selectedDate]);
 
   const getProbeValue = (lat, lon, depthIdx) => {
     if (!layersData[depthIdx]) return null;
