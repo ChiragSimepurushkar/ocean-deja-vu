@@ -22,6 +22,55 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
   const [containerWidth, setContainerWidth] = useState(0);
   const navigate = useNavigate();
 
+  const globeRef = useRef();
+  const [hover, setHover] = useState(null);      // {x, y, lat, lng, sst, geo}
+  const geoCache = useRef({});
+  const geoTimer = useRef(null);
+  const lastMove = useRef(0);
+
+  const lookupSst = (lat, lng) => {
+    if (!oceanData?.data) return null;
+    const { lat: lats, lon: lons, data } = oceanData;
+    const res = lats[1] - lats[0];
+    const iy = Math.round((lat - lats[0]) / res);
+    const ix = Math.round((lng - lons[0]) / res);
+    const v = data[iy]?.[ix];
+    return v === null || v === undefined || Number.isNaN(v) ? null : v;
+  };
+
+  const handleMouseMove = (e) => {
+    if (e.buttons) { setHover(null); return; }             // dragging/rotating
+    const now = performance.now();
+    if (now - lastMove.current < 50) return;               // throttle
+    lastMove.current = now;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const c = globeRef.current?.toGlobeCoords(x, y);
+    if (!c) { setHover(null); return; }
+
+    const { lat, lng } = c;
+    const inDomain = lat >= 5 && lat <= 30 && lng >= 45 && lng <= 105;
+    const sst = inDomain ? lookupSst(lat, lng) : null;
+    setHover({ x, y, lat, lng, sst, inDomain, geo: null });
+
+    // reverse-geocode only after the cursor rests (saves API calls)
+    clearTimeout(geoTimer.current);
+    geoTimer.current = setTimeout(async () => {
+      const key = `${lat.toFixed(1)},${lng.toFixed(1)}`;
+      let geo = geoCache.current[key];
+      if (!geo) {
+        try {
+          const r = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+          const j = await r.json();
+          geo = { country: j.countryName || "", region: j.principalSubdivision || "", isLand: !!j.countryCode };
+          geoCache.current[key] = geo;
+        } catch { return; }
+      }
+      setHover(h => (h ? { ...h, geo } : h));
+    }, 350);
+  };
+
   // Measure container width so Globe never overflows
   useEffect(() => {
     if (!containerRef.current) return;
@@ -124,6 +173,8 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
         ref={containerRef}
         className={`task-card tour-globe-click ${isFullScreen ? "fullscreen-chart" : ""}`}
         style={{ position: "relative", height: isFullScreen ? "100vh" : "450px", padding: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", borderLeft: "none", marginBottom: "2rem", background: "#000814", width: "100%" }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHover(null)}
       >
         <button
           onClick={() => setIsFullScreen(!isFullScreen)}
@@ -183,12 +234,36 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
           </div>
         )}
 
+        {hover && !landPopup && (
+          <div style={{
+            position: "absolute", left: hover.x + 14, top: hover.y + 14, zIndex: 150,
+            pointerEvents: "none", background: "rgba(8,18,38,0.92)", color: "#fff",
+            border: "1px solid #00aaff", borderRadius: 8, padding: "8px 12px",
+            fontSize: "0.8rem", fontFamily: "monospace", backdropFilter: "blur(6px)", minWidth: 170,
+          }}>
+            <div style={{ color: hover.geo?.isLand ? "#00ffaa" : "#00d4ff", fontWeight: 700, marginBottom: 4 }}>
+              {hover.geo ? (hover.geo.isLand ? `🏔 ${hover.geo.country}` : "🌊 Ocean") : "…"}
+            </div>
+            {hover.geo?.region && <div>{hover.geo.region}</div>}
+            <div>{hover.lat.toFixed(2)}°N, {hover.lng.toFixed(2)}°E</div>
+            {hover.inDomain && !hover.geo?.isLand && (
+              <div style={{ color: "#ffd166" }}>
+                SST: {hover.sst !== null ? `${hover.sst.toFixed(2)} °C` : "no data"}
+              </div>
+            )}
+            <div style={{ color: "#88a", marginTop: 4 }}>
+              {hover.geo?.isLand ? "Click for land stats" : "Click to Deep Dive"}
+            </div>
+          </div>
+        )}
+
         {viewMode === "3d" ? (
           <CurtainView startPoint={transectStart} endPoint={transectEnd} date={date} />
         ) : loading ? (
           <div style={{ color: "#aef", fontFamily: "monospace" }}>Loading…</div>
         ) : (
           <Globe
+            ref={globeRef}
             globeImageUrl={texture || "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"}
             bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
             backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
