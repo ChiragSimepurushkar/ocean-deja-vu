@@ -669,25 +669,21 @@ export const Creatures3D: React.FC<Creatures3DProps> = ({
 
   return (
     <group>
-      {/* ── SURFACE / REEF ZONE (0-100m) ── */}
-      {isReefBiome && showShallowLife && (
+      {/* ── SURFACE / PELAGIC ZONE (0-100m) ── */}
+      {showShallowLife && (
         <>
           <RealFish position={[ 3,  -4, -7]} speed={1.2} scale={1.1}  color="#1a6fa0" species={getSpecies('yellowfin-tuna')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('yellowfin-tuna')} />
           <RealFish position={[-6, -10, -9]} speed={0.9} scale={0.95} color="#1a6fa0" species={getSpecies('yellowfin-tuna')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('yellowfin-tuna')} />
           <RealFish position={[ 8,  -7, -5]} speed={1.05} scale={0.85} color="#2a85b8" species={getSpecies('yellowfin-tuna')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('yellowfin-tuna')} />
+          <RealFish position={[-3, -28, -8]} speed={0.85} scale={0.75} color="#2563eb" species={getSpecies('yellowfin-tuna')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('yellowfin-tuna')} />
+          
           <FishSchool centerPosition={[-4, -6,  -12]} count={24} color="#94a3b8" />
           <FishSchool centerPosition={[ 6, -14, -10]} count={18} color="#7dd3fc" />
+          <FishSchool centerPosition={[-3, -30, -11]} count={16} color="#bae6fd" />
+          
           <MantaRay position={[0, -18, -8]} speed={0.7} scale={1.3} species={getSpecies('reef-manta')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('reef-manta')} />
           <SeaTurtle position={[-5, -12, -6]} speed={0.55} scale={1.0} species={getSpecies('hawksbill-turtle')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('hawksbill-turtle')} />
           <SeaTurtle position={[ 7,  -8,-10]} speed={0.48} scale={0.85} species={getSpecies('hawksbill-turtle')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('hawksbill-turtle')} />
-        </>
-      )}
-
-      {/* Open ocean mid-water fish (shown in all non-abyssal biomes) */}
-      {!isAbyssalBiome && showShallowLife && (
-        <>
-          <RealFish position={[-3, -28, -8]} speed={0.85} scale={0.75} color="#2563eb" species={getSpecies('yellowfin-tuna')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('yellowfin-tuna')} />
-          <FishSchool centerPosition={[-3, -30, -11]} count={16} color="#bae6fd" />
         </>
       )}
 

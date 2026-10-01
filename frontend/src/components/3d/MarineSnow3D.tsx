@@ -13,6 +13,23 @@ interface MarineSnow3DProps {
 export const MarineSnow3D: React.FC<MarineSnow3DProps> = ({ currentDepth, count = 1200, config }) => {
   const pointsRef = useRef<THREE.Points>(null);
 
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d')!;
+    const r = 16;
+    const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(r, r, r, 0, Math.PI * 2);
+    ctx.fill();
+    return new THREE.CanvasTexture(canvas);
+  }, []);
+
   // Generate initial particle positions across depth range
   const { positions, velocities, originalOffsets } = useMemo(() => {
     const pos = new Float32Array(count * 3);
@@ -89,12 +106,14 @@ export const MarineSnow3D: React.FC<MarineSnow3DProps> = ({ currentDepth, count 
         />
       </bufferGeometry>
       <pointsMaterial
+        map={texture}
         size={currentDepth > 300 ? 0.35 : 0.22}
         color={currentDepth > 400 ? '#a5f3fc' : '#e0f2fe'}
         transparent
         opacity={(currentDepth > 300 ? 0.75 : 0.45) * (1 / config.visibility)}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
+        alphaTest={0.01}
       />
     </points>
   );
