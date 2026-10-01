@@ -29,6 +29,7 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
   const geoCache = useRef({});
   const geoTimer = useRef(null);
   const lastMove = useRef(0);
+  const mousePosRef = useRef({ x: 0, y: 0 }); // track real screen coords for splash
 
   const lookupSst = (lat, lng) => {
     if (!oceanData?.data) return null;
@@ -41,6 +42,9 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
   };
 
   const handleMouseMove = (e) => {
+    // Always track real cursor position for splash transition
+    mousePosRef.current = { x: e.clientX, y: e.clientY };
+
     if (e.buttons) { setHover(null); return; }             // dragging/rotating
     const now = performance.now();
     if (now - lastMove.current < 50) return;               // throttle
@@ -134,12 +138,11 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
         // Ocean click — show splash first, navigate inside its onComplete
         setLat(clickLat);
         setLon(clickLng);
-        const rect = containerRef.current?.getBoundingClientRect();
-        const globeEl = containerRef.current?.querySelector('canvas');
-        const gRect = globeEl?.getBoundingClientRect() || rect;
+        // Use real tracked mouse position — react-globe.gl's event is a ThreeJS event
+        // and does NOT have clientX/clientY on the DOM MouseEvent level
         setSplash({
-          x: e?.clientX ?? (gRect ? gRect.left + gRect.width / 2 : window.innerWidth / 2),
-          y: e?.clientY ?? (gRect ? gRect.top + gRect.height / 2 : window.innerHeight / 2),
+          x: mousePosRef.current.x,
+          y: mousePosRef.current.y,
           name: `${clickLat.toFixed(2)}°N ${clickLng.toFixed(2)}°E`,
         });
       }
@@ -147,10 +150,9 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
       console.error("Geocode check failed", err);
       setLat(clickLat);
       setLon(clickLng);
-      const rect = containerRef.current?.getBoundingClientRect();
       setSplash({
-        x: rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
-        y: rect ? rect.top + rect.height / 2 : window.innerHeight / 2,
+        x: mousePosRef.current.x || window.innerWidth / 2,
+        y: mousePosRef.current.y || window.innerHeight / 2,
         name: `${clickLat.toFixed(2)}°N ${clickLng.toFixed(2)}°E`,
       });
     } finally {

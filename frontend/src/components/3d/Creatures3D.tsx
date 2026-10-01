@@ -654,23 +654,46 @@ export const Creatures3D: React.FC<Creatures3DProps> = ({
 
   const isDisc = (id: string) => discoveredSpeciesIds.includes(id);
 
+  // Read creature weights from DiveConfig (0=absent, 1=full density)
+  const bias = config.creatureBias;
+  const showShallowLife = bias.schoolFish > 0.5 || bias.megafauna > 0.5;
+  const showMidLife = bias.gelatinous > 0.3 || bias.predators > 0.3;
+  const showDeepLife = bias.deepFish > 0.4;
+  const showAbyssalLife = bias.deepFish > 0.6;
+  const showBenthic = bias.benthic > 0.4;
+
+  // Biomes that have surface reef creatures — use new theme names
+  const isReefBiome = ['reef', 'seagrass', 'sunlit', 'monsoonBloom', 'heatwave', 'eddy'].includes(config.biome);
+  // Biomes that have abyssal/deep creatures
+  const isAbyssalBiome = ['abyssal', 'trench', 'vent', 'seep', 'deepPelagic', 'mesopelagic'].includes(config.biome);
+
   return (
     <group>
-      {/* ── SURFACE / REEF ZONE (0-100m | Y: 0 to -20) ── */}
-      {/* Only spawn surface reef creatures if atoll/shelf or event triggered */}
-      {(config.biome === 'atoll' || config.biome === 'shelf') && (
+      {/* ── SURFACE / REEF ZONE (0-100m) ── */}
+      {isReefBiome && showShallowLife && (
         <>
           <RealFish position={[ 3,  -4, -7]} speed={1.2} scale={1.1}  color="#1a6fa0" species={getSpecies('yellowfin-tuna')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('yellowfin-tuna')} />
           <RealFish position={[-6, -10, -9]} speed={0.9} scale={0.95} color="#1a6fa0" species={getSpecies('yellowfin-tuna')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('yellowfin-tuna')} />
+          <RealFish position={[ 8,  -7, -5]} speed={1.05} scale={0.85} color="#2a85b8" species={getSpecies('yellowfin-tuna')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('yellowfin-tuna')} />
+          <FishSchool centerPosition={[-4, -6,  -12]} count={24} color="#94a3b8" />
+          <FishSchool centerPosition={[ 6, -14, -10]} count={18} color="#7dd3fc" />
           <MantaRay position={[0, -18, -8]} speed={0.7} scale={1.3} species={getSpecies('reef-manta')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('reef-manta')} />
           <SeaTurtle position={[-5, -12, -6]} speed={0.55} scale={1.0} species={getSpecies('hawksbill-turtle')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('hawksbill-turtle')} />
+          <SeaTurtle position={[ 7,  -8,-10]} speed={0.48} scale={0.85} species={getSpecies('hawksbill-turtle')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('hawksbill-turtle')} />
+        </>
+      )}
+
+      {/* Open ocean mid-water fish (shown in all non-abyssal biomes) */}
+      {!isAbyssalBiome && showShallowLife && (
+        <>
+          <RealFish position={[-3, -28, -8]} speed={0.85} scale={0.75} color="#2563eb" species={getSpecies('yellowfin-tuna')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('yellowfin-tuna')} />
+          <FishSchool centerPosition={[-3, -30, -11]} count={16} color="#bae6fd" />
         </>
       )}
 
       {/* ── Dynamic config events ── */}
       {config.events.map((ev, i) => {
         const y = -(ev.atDepth / 1000) * 200;
-        // only render if nearby
         if (Math.abs(currentDepth - ev.atDepth) > 150) return null;
 
         if (ev.type === 'whaleShark') {
@@ -685,30 +708,46 @@ export const Creatures3D: React.FC<Creatures3DProps> = ({
         return null;
       })}
 
-      {/* ── THERMOCLINE BAND (100-250m | Y: -20 to -50) ── */}
-      <BioluminescentJellyfish position={[ 4, -25, -7]} speed={0.8}  scale={1.0} species={getSpecies('comb-jelly')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('comb-jelly')} />
-      <BioluminescentJellyfish position={[-7, -32, -9]} speed={0.65} scale={1.3} species={getSpecies('comb-jelly')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('comb-jelly')} />
-      <BioluminescentJellyfish position={[ 2, -42, -6]} speed={0.72} scale={0.9} species={getSpecies('bioluminescent-jelly')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('bioluminescent-jelly')} />
-
-      <ThresherShark position={[5, -38, -8]} speed={0.8} scale={1.4} species={getSpecies('bigeye-thresher')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('bigeye-thresher')} />
-
-      {/* ── MESOPELAGIC TWILIGHT (250-500m | Y: -50 to -100) ── */}
-      <GlassSquid position={[ 3, -62, -8]} speed={0.9}  scale={1.2} species={getSpecies('glass-squid')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('glass-squid')} />
-      <GlassSquid position={[-6, -78, -6]} speed={0.75} scale={1.0} species={getSpecies('glass-squid')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('glass-squid')} />
-
-      <Siphonophore position={[-4, -92, -9]} speed={0.4} scale={1.3} species={getSpecies('deep-siphonophore')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('deep-siphonophore')} />
-
-      {/* ── OXYGEN MINIMUM ZONE (500-700m | Y: -100 to -140) ── */}
-      {!(config.omzTop && currentDepth > config.omzTop) && (
-        <Viperfish    position={[ 4, -115, -7]} speed={0.7}  scale={1.1} species={getSpecies('viperfish')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('viperfish')} />
+      {/* ── THERMOCLINE BAND (100-250m) ── */}
+      {showMidLife && (
+        <>
+          <BioluminescentJellyfish position={[ 4, -25, -7]} speed={0.8}  scale={1.0} species={getSpecies('comb-jelly')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('comb-jelly')} />
+          <BioluminescentJellyfish position={[-7, -32, -9]} speed={0.65} scale={1.3} species={getSpecies('comb-jelly')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('comb-jelly')} />
+          <BioluminescentJellyfish position={[ 2, -42, -6]} speed={0.72} scale={0.9} species={getSpecies('bioluminescent-jelly')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('bioluminescent-jelly')} />
+          {bias.predators > 0.4 && (
+            <ThresherShark position={[5, -38, -8]} speed={0.8} scale={1.4} species={getSpecies('bigeye-thresher')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('bigeye-thresher')} />
+          )}
+        </>
       )}
 
-      {/* ── ABYSSAL MIDNIGHT ZONE (700-1000m | Y: -140 to -200) ── */}
-      {(config.biome === 'abyssal' || config.biome === 'seamount') && (
+      {/* ── MESOPELAGIC TWILIGHT (250-500m) ── */}
+      {showMidLife && (
+        <>
+          <BioluminescentJellyfish position={[-5, -58,  -10]} speed={0.6}  scale={1.5} species={getSpecies('bioluminescent-jelly')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('bioluminescent-jelly')} />
+          <BioluminescentJellyfish position={[ 6, -70,  -7]}  speed={0.75} scale={1.1} species={getSpecies('bioluminescent-jelly')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('bioluminescent-jelly')} />
+          <GlassSquid position={[ 3, -62, -8]} speed={0.9}  scale={1.2} species={getSpecies('glass-squid')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('glass-squid')} />
+          <GlassSquid position={[-6, -78, -6]} speed={0.75} scale={1.0} species={getSpecies('glass-squid')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('glass-squid')} />
+          <Siphonophore position={[-4, -92, -9]} speed={0.4} scale={1.3} species={getSpecies('deep-siphonophore')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('deep-siphonophore')} />
+        </>
+      )}
+
+      {/* ── OXYGEN MINIMUM ZONE — sparse ── */}
+      {showDeepLife && !config.omzTop && (
+        <>
+          <BioluminescentJellyfish position={[ 5, -108, -7]} speed={0.55} scale={1.6} species={getSpecies('bioluminescent-jelly')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('bioluminescent-jelly')} />
+          <Siphonophore position={[ 3, -120, -8]} speed={0.35} scale={1.5} species={getSpecies('deep-siphonophore')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('deep-siphonophore')} />
+          <Viperfish    position={[ 4, -115, -7]} speed={0.7}  scale={1.1} species={getSpecies('viperfish')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('viperfish')} />
+        </>
+      )}
+
+      {/* ── ABYSSAL / DEEP PELAGIC ZONE (700-1000m) ── */}
+      {isAbyssalBiome && showAbyssalLife && (
         <>
           <Anglerfish3D position={[ 3, -150, -6]} speed={0.55} scale={1.2} species={getSpecies('deep-sea-angler')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('deep-sea-angler')} />
           <Anglerfish3D position={[-5, -168, -8]} speed={0.5}  scale={1.4} species={getSpecies('anglerfish')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('anglerfish')} />
+          <Anglerfish3D position={[ 2, -190, -7]} speed={0.45} scale={1.0} species={getSpecies('anglerfish')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('anglerfish')} />
           <Viperfish    position={[-4, -158, -7]} speed={0.62} scale={1.25} species={getSpecies('viperfish')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('viperfish')} />
+          <Viperfish    position={[ 6, -178, -5]} speed={0.55} scale={1.1}  species={getSpecies('viperfish')} onDiscover={onDiscoverSpecies} isDiscovered={isDisc('viperfish')} />
         </>
       )}
     </group>

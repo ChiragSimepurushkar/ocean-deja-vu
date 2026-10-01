@@ -1,11 +1,6 @@
 /**
  * OceanBubbles3D — rising bubble particle system for the upper 0–100 m
- *
- * Behaviour vs MarineSnow3D:
- *   • Bubbles rise upward (accelerating buoyancy), snow sinks
- *   • Side-to-side wobble inversely proportional to bubble size (small = more wobble)
- *   • Bubbles shrink + fade as they approach the surface (pop)
- *   • Only rendered below 100 m by convention — Ocean3DScene gates this
+ * Uses a canvas-drawn circular sprite so particles look round, not square.
  */
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -16,117 +11,132 @@ interface OceanBubbles3DProps {
   count?: number;
 }
 
-// Camera's world-Y at a given depth (linear 0-1000m → 0 to -200 world units)
-const depthToY = (d: number) => -(d / 1000) * 200;
+/** Build a circular sprite texture on a canvas so PointsMaterial renders circles */
+function makeCircleTexture(size = 64): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const r = size / 2;
+
+  // Outer bright rim (hollow bubble look)
+  const grad = ctx.createRadialGradient(r, r, r * 0.55, r, r, r * 0.98);
+  grad.addColorStop(0, 'rgba(186,230,253,0.0)');   // transparent centre
+  grad.addColorStop(0.6, 'rgba(186,230,253,0.0)');
+  grad.addColorStop(0.80, 'rgba(224,242,254,0.45)'); // faint body
+  grad.addColorStop(0.90, 'rgba(255,255,255,0.85)'); // bright rim
+  grad.addColorStop(1.0, 'rgba(255,255,255,0.0)');  // anti-alias edge
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(r, r, r * 0.99, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Specular highlight (top-left glint)
+  const spec = ctx.createRadialGradient(r * 0.62, r * 0.38, 0, r * 0.62, r * 0.38, r * 0.22);
+  spec.addColorStop(0, 'rgba(255,255,255,0.72)');
+  spec.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = spec;
+  ctx.beginPath();
+  ctx.arc(r * 0.62, r * 0.38, r * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+
+  return new THREE.CanvasTexture(canvas);
+}
 
 export const OceanBubbles3D: React.FC<OceanBubbles3DProps> = ({
   currentDepth,
-  count = 600,
+  count = 500,
 }) => {
   const pointsRef = useRef<THREE.Points>(null);
 
-  // Static per-particle data: size, wobble freq, phase, home column position
-  const { positions, sizes, phases, wobbleAmps, velocities, originalY } = useMemo(() => {
+  const texture = useMemo(() => makeCircleTexture(64), []);
+
+  const { positions, sizes, phases, wobbleAmps, velocities } = useMemo(() => {
     const pos  = new Float32Array(count * 3);
     const sz   = new Float32Array(count);
     const ph   = new Float32Array(count);
     const wobA = new Float32Array(count);
-    const vel  = new Float32Array(count); // rise speed
-    const origY = new Float32Array(count);
+    const vel  = new Float32Array(count);
 
     for (let i = 0; i < count; i++) {
-      const x = (Math.random() - 0.5) * 36;
-      // Bubbles live in 0-100m world band (Y: 0 to -20)
-      const y = -Math.random() * 20;
-      const z = (Math.random() - 0.5) * 30;
+      pos[i * 3]     = (Math.random() - 0.5) * 34;
+      pos[i * 3 + 1] = -Math.random() * 20;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 28;
 
-      pos[i * 3]     = x;
-      pos[i * 3 + 1] = y;
-      pos[i * 3 + 2] = z;
-      origY[i]        = y;
-
-      // Size distribution: mostly small, occasional large
+      // Size: mostly small, occasional large
       sz[i] = Math.random() < 0.85
-        ? 0.08 + Math.random() * 0.18        // small
-        : 0.28 + Math.random() * 0.22;       // occasional large
+        ? 0.09 + Math.random() * 0.18
+        : 0.28 + Math.random() * 0.24;
 
-      // Small bubbles wobble more
-      wobA[i] = THREE.MathUtils.lerp(0.18, 0.04, sz[i] / 0.5);
-
-      // Rise speed: larger bubbles rise faster
-      vel[i] = 0.04 + sz[i] * 0.12;
-
-      ph[i]  = Math.random() * Math.PI * 2;
+      // Small = more wobble
+      wobA[i] = Math.max(0.03, 0.20 - sz[i] * 0.3);
+      vel[i]  = 0.038 + sz[i] * 0.11;
+      ph[i]   = Math.random() * Math.PI * 2;
     }
-
-    return { positions: pos, sizes: sz, phases: ph, wobbleAmps: wobA, velocities: vel, originalY: origY };
+    return { positions: pos, sizes: sz, phases: ph, wobbleAmps: wobA, velocities: vel };
   }, [count]);
 
-  // We drive this as a custom points material to get rim highlight
-  const material = useMemo(() => {
-    return new THREE.PointsMaterial({
-      size: 0.28,
-      sizeAttenuation: true,
-      color: new THREE.Color('#bae6fd'),
-      transparent: true,
-      opacity: 0.62,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      vertexColors: false,
-    });
-  }, []);
+  const material = useMemo(() => new THREE.PointsMaterial({
+    map: texture,
+    alphaTest: 0.01,
+    transparent: true,
+    opacity: 0.7,
+    size: 0.55,
+    sizeAttenuation: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    vertexColors: false,
+    color: new THREE.Color('#bae6fd'),
+  }), [texture]);
 
   useFrame((state, _delta) => {
     if (!pointsRef.current) return;
-    const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
-    const arr = posAttr.array as Float32Array;
+    const pos = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute;
+    const arr = pos.array as Float32Array;
     const time = state.clock.getElapsedTime();
 
-    const camY = depthToY(currentDepth);
+    // Camera Y = depthToY(currentDepth)
+    const camY = -(currentDepth / 1000) * 200;
+    const ceiling = camY + 18;
+    const floor   = camY - 22;
 
     for (let i = 0; i < count; i++) {
-      const idx = i * 3;
+      const ix = i * 3, iy = ix + 1, iz = ix + 2;
 
-      // Rise with acceleration (buoyancy curve)
-      arr[idx + 1] += velocities[i] * (1 + (camY - arr[idx + 1]) * 0.002);
+      // Accelerating rise (buoyancy)
+      arr[iy] += velocities[i];
 
-      // Side-to-side wobble — frequency tied to size (small = faster wobble)
-      const wobFreq = THREE.MathUtils.lerp(2.8, 1.2, sizes[i] / 0.5);
-      arr[idx]     += Math.sin(time * wobFreq + phases[i]) * wobbleAmps[i] * 0.06;
-      arr[idx + 2] += Math.cos(time * wobFreq * 0.7 + phases[i] + 1) * wobbleAmps[i] * 0.04;
+      // Side wobble — smaller = faster wobble, inversely proportional to size
+      const wobFreq = 2.5 - sizes[i] * 2.0;
+      arr[ix] += Math.sin(time * wobFreq + phases[i]) * wobbleAmps[i] * 0.055;
+      arr[iz] += Math.cos(time * wobFreq * 0.72 + phases[i] + 1.3) * wobbleAmps[i] * 0.038;
 
-      // Pop: when bubble reaches near surface (Y > camY + 16), recycle it below
-      if (arr[idx + 1] > camY + 18) {
-        // Respawn at bottom of the bubble column
-        arr[idx]     = (Math.random() - 0.5) * 36;
-        arr[idx + 1] = camY - 20 + Math.random() * 4; // just below bottom
-        arr[idx + 2] = (Math.random() - 0.5) * 30;
+      // Pop at surface — respawn just below camera
+      if (arr[iy] > ceiling) {
+        arr[ix] = (Math.random() - 0.5) * 34;
+        arr[iy] = floor + Math.random() * 3;
+        arr[iz] = (Math.random() - 0.5) * 28;
       }
 
       // X/Z wrapping
-      if (Math.abs(arr[idx]) > 20)     arr[idx]     = -Math.sign(arr[idx]) * 18;
-      if (Math.abs(arr[idx + 2]) > 17) arr[idx + 2] = -Math.sign(arr[idx + 2]) * 15;
+      if (arr[ix] >  19) arr[ix] = -17;
+      if (arr[ix] < -19) arr[ix] =  17;
+      if (arr[iz] >  16) arr[iz] = -14;
+      if (arr[iz] < -16) arr[iz] =  14;
     }
+    pos.needsUpdate = true;
 
-    posAttr.needsUpdate = true;
-
-    // Opacity fades with depth — bubbles invisible below 120m, bright near surface
-    material.opacity = THREE.MathUtils.clamp(
-      THREE.MathUtils.mapLinear(currentDepth, 0, 100, 0.7, 0.0),
-      0, 0.7
-    );
+    // Fade out as depth increases past 80m
+    material.opacity = Math.max(0, Math.min(0.72, 1 - currentDepth / 90));
   });
 
-  // Only render within the bubble zone (0-120m)
-  if (currentDepth > 120) return null;
+  if (currentDepth > 110) return null;
 
   return (
     <points ref={pointsRef} material={material}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-        />
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
     </points>
   );
