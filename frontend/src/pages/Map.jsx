@@ -138,23 +138,15 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
         // Ocean click — show splash first, navigate inside its onComplete
         setLat(clickLat);
         setLon(clickLng);
-        // Use real tracked mouse position — react-globe.gl's event is a ThreeJS event
-        // and does NOT have clientX/clientY on the DOM MouseEvent level
-        setSplash({
-          x: mousePosRef.current.x,
-          y: mousePosRef.current.y,
-          name: `${clickLat.toFixed(2)}°N ${clickLng.toFixed(2)}°E`,
-        });
+        const coords = getSplashCoords();
+        setSplash({ ...coords, name: `${clickLat.toFixed(2)}°N ${clickLng.toFixed(2)}°E` });
       }
     } catch (err) {
       console.error("Geocode check failed", err);
       setLat(clickLat);
       setLon(clickLng);
-      setSplash({
-        x: mousePosRef.current.x || window.innerWidth / 2,
-        y: mousePosRef.current.y || window.innerHeight / 2,
-        name: `${clickLat.toFixed(2)}°N ${clickLng.toFixed(2)}°E`,
-      });
+      const coords = getSplashCoords();
+      setSplash({ ...coords, name: `${clickLat.toFixed(2)}°N ${clickLng.toFixed(2)}°E` });
     } finally {
       setGeoChecking(false);
     }
@@ -163,6 +155,18 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
   const handleSplashComplete = () => {
     setSplash(null);
     navigate("/deepdive");
+  };
+
+  /** Best-effort screen coords for the splash: real mouse pos if available, else globe canvas centre */
+  const getSplashCoords = () => {
+    if (mousePosRef.current.x > 0 || mousePosRef.current.y > 0) {
+      return { x: mousePosRef.current.x, y: mousePosRef.current.y };
+    }
+    const canvas = containerRef.current?.querySelector('canvas');
+    const rect = canvas?.getBoundingClientRect() ?? containerRef.current?.getBoundingClientRect();
+    return rect
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   };
 
   return (
