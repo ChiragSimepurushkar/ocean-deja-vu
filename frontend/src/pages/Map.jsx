@@ -6,6 +6,7 @@ import { getAdvisory } from "../api";
 import CurtainView from "../components/CurtainView";
 import { useOceanDataset } from "../hooks/useOceanDataset";
 import { buildSstTexture } from "../utils/buildSstTexture";
+import { SplashTransition } from "../components/SplashTransition";
 
 export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, lon, setLon }) {
   const [advisory, setAdvisory] = useState(null);
@@ -18,6 +19,7 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
   const [landPopup, setLandPopup] = useState(null);
   const [geoChecking, setGeoChecking] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
+  const [splash, setSplash] = useState(null); // { x, y, name }
   const containerRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const navigate = useNavigate();
@@ -101,7 +103,7 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
     setViewMode("2d");
   };
 
-  const handleGlobeClick = async ({ lat: clickLat, lng: clickLng }) => {
+  const handleGlobeClick = async ({ lat: clickLat, lng: clickLng }, e) => {
     setLandPopup(null);
     setToastMsg("");
     
@@ -129,22 +131,50 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
         setLat(clickLat);
         setLon(clickLng);
       } else {
+        // Ocean click — show splash first, navigate inside its onComplete
         setLat(clickLat);
         setLon(clickLng);
-        navigate("/deepdive");
+        const rect = containerRef.current?.getBoundingClientRect();
+        const globeEl = containerRef.current?.querySelector('canvas');
+        const gRect = globeEl?.getBoundingClientRect() || rect;
+        setSplash({
+          x: e?.clientX ?? (gRect ? gRect.left + gRect.width / 2 : window.innerWidth / 2),
+          y: e?.clientY ?? (gRect ? gRect.top + gRect.height / 2 : window.innerHeight / 2),
+          name: `${clickLat.toFixed(2)}°N ${clickLng.toFixed(2)}°E`,
+        });
       }
     } catch (err) {
       console.error("Geocode check failed", err);
       setLat(clickLat);
       setLon(clickLng);
-      navigate("/deepdive");
+      const rect = containerRef.current?.getBoundingClientRect();
+      setSplash({
+        x: rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
+        y: rect ? rect.top + rect.height / 2 : window.innerHeight / 2,
+        name: `${clickLat.toFixed(2)}°N ${clickLng.toFixed(2)}°E`,
+      });
     } finally {
       setGeoChecking(false);
     }
   };
 
+  const handleSplashComplete = () => {
+    setSplash(null);
+    navigate("/deepdive");
+  };
+
   return (
     <>
+      {/* Splash transition overlay — plays before navigating to /deepdive */}
+      {splash && (
+        <SplashTransition
+          clickX={splash.x}
+          clickY={splash.y}
+          soundEnabled={false}
+          stationName={splash.name}
+          onComplete={handleSplashComplete}
+        />
+      )}
       <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", background: "var(--bg-input)", padding: "1rem", borderRadius: "12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 700 }}>DATE</span>

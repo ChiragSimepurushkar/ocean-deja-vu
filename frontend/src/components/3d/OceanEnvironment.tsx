@@ -5,6 +5,11 @@ import { createNoise2D } from 'simplex-noise';
 import { DiveConfig } from '../../utils/buildDiveConfig';
 import { Instances, Instance } from '@react-three/drei';
 
+// Scratch colors — reused every frame to avoid GC pressure
+const _targetColor  = new THREE.Color();
+const _surfaceColor = new THREE.Color();
+const _deepColor    = new THREE.Color();
+
 interface OceanEnvironmentProps {
   currentDepth: number; // 0 to 1000m
   config: DiveConfig;
@@ -87,15 +92,24 @@ export const OceanEnvironment: React.FC<OceanEnvironmentProps> = ({ currentDepth
 
   useFrame((_, delta) => {
     const depthRatio = Math.min(1, currentDepth / 600);
-    const targetColor = new THREE.Color(config.surfaceColor).lerp(new THREE.Color(config.deepColor), depthRatio);
-    
-    // Visibility multiplier
-    let targetDensity = THREE.MathUtils.lerp(0.015, 0.05, depthRatio) * (1 / config.visibility);
-    
-    // OMZ darkening
+    _surfaceColor.set(config.surfaceColor);
+    _deepColor.set(config.deepColor);
+    _targetColor.copy(_surfaceColor).lerp(_deepColor, depthRatio);
+
+    // ── Fog density fix ──────────────────────────────────────────────────────
+    // Base density: natural per-depth darkening only (matches original hardcoded version)
+    const baseDensity = THREE.MathUtils.lerp(0.014, 0.044, depthRatio);
+    // Visibility multiplier clamped to [0.77, 1.4] — clear biomes (vis>=1) get 1.0x or less;
+    // most turbid biome (vis=0.75) gets at most 1.33x, not the unlimited multiplier before.
+    const visMult = Math.min(1.4, Math.max(0.77, 1 / config.visibility));
+    let targetDensity = baseDensity * visMult;
+
+    // OMZ darkening — ambient only, NOT fog density
     let targetAmbientInt = THREE.MathUtils.lerp(1.4, 0.1, depthRatio);
-    if (config.omzTop && currentDepth >= config.omzTop && currentDepth <= config.omzTop + 800) {
-      targetAmbientInt *= 0.3; // significantly darker in OMZ
+    if (config.omzTop && currentDepth >= config.omzTop && currentDepth <= config.omzTop + 400) {
+      // Soft ramp into OMZ over 50m, not a hard ×0.3 step
+      const omzT = Math.min(1, (currentDepth - config.omzTop) / 50);
+      targetAmbientInt *= THREE.MathUtils.lerp(1, 0.4, omzT);
     }
     
     // Sun logic
@@ -103,7 +117,7 @@ export const OceanEnvironment: React.FC<OceanEnvironmentProps> = ({ currentDepth
     if (config.monsoon && !config.isNight) targetSunInt *= 0.6; // dimmer during monsoon
 
     if (fogRef.current) {
-      fogRef.current.color.lerp(targetColor, delta * 3.0);
+      fogRef.current.color.lerp(_targetColor, delta * 3.0);
       fogRef.current.density = THREE.MathUtils.damp(fogRef.current.density, targetDensity, 3.0, delta);
       if (scene.background instanceof THREE.Color) {
         scene.background.copy(fogRef.current.color);
@@ -111,7 +125,8 @@ export const OceanEnvironment: React.FC<OceanEnvironmentProps> = ({ currentDepth
     }
     if (ambientLightRef.current) {
       ambientLightRef.current.intensity = THREE.MathUtils.damp(ambientLightRef.current.intensity, targetAmbientInt, 3.0, delta);
-      ambientLightRef.current.color.lerp(targetColor.clone().addScalar(0.2), delta * 2.0);
+      // Slightly lighten ambient color so it never goes pure black-tinted
+      ambientLightRef.current.color.lerp(_targetColor, delta * 1.5);
     }
     if (sunLightRef.current) {
       sunLightRef.current.intensity = THREE.MathUtils.damp(sunLightRef.current.intensity, targetSunInt, 3.0, delta);

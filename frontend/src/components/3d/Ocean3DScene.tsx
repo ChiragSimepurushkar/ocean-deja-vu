@@ -7,6 +7,7 @@ import { OceanSubmarineLight } from './OceanSubmarineLight';
 import { MarineSnow3D } from './MarineSnow3D';
 import { Creatures3D } from './Creatures3D';
 import { OceanDepthMarkers } from './OceanDepthMarkers';
+import { OceanBubbles3D } from './OceanBubbles3D';
 import { MarineSpecies } from '../../types';
 import { DiveConfig } from '../../utils/buildDiveConfig';
 
@@ -89,6 +90,10 @@ export const Ocean3DScene: React.FC<Ocean3DSceneProps> = ({
           {/* Drifting marine snow particles */}
           <MarineSnow3D currentDepth={currentDepth} count={1400} config={config} />
 
+          {/* Rising bubbles — only in upper 120m and bubble/bioluminescent biomes */}
+          {(config.particleStyle === 'bubbles' || config.particleStyle === 'bioluminescent') && (
+            <OceanBubbles3D currentDepth={currentDepth} />
+          )}
           {/* 10 animated creature types — purely decorative, no click */}
           <Creatures3D
             currentDepth={currentDepth}
