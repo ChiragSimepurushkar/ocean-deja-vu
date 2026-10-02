@@ -32,7 +32,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from scipy.interpolate import interp1d
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(message)s",
+    datefmt="%H:%M:%S"
+)
 logger = logging.getLogger(__name__)
+
+# ANSI color codes for terminal output
+_C = {"reset": "\033[0m", "bold": "\033[1m",
+      "model": "\033[92m",   # bright green
+      "zarr":  "\033[96m",   # bright cyan
+      "mock":  "\033[93m",   # bright yellow
+      "error": "\033[91m",   # bright red
+      "info":  "\033[90m"}   # grey
+
+def _log_serve(endpoint: str, source: str, details: str = "") -> None:
+    """Print a colored one-liner to terminal for every served request."""
+    tag = {"model": "MODEL", "zarr": "DATASET", "mock": "MOCK"}.get(source, source.upper())
+    color = _C.get(source, _C["info"])
+    print(f"{color}{_C['bold']}[{tag}]{_C['reset']} {endpoint}{_C['info']} {details}{_C['reset']}")
 
 app = FastAPI(
     title="Ocean Deja Vu API",
@@ -146,39 +165,44 @@ def _zarr_field_for_date(date: str, var: str) -> Optional[np.ndarray]:
         return None
 
     try:
-        # Try target_profiles first (actual in-situ observation targets)
+        # target_profiles/{date} → shape (n_depths=15, H=101, W=241)  [depth-first]
         key = f"target_profiles/{date}"
         if key in _zarr_store:
-            prof_grid = _zarr_store[key][:]   # (H, W, 15)
+            raw = _zarr_store[key][:]  # (15, H, W)
+            # Transpose to (H, W, 15) for uniform processing
+            if raw.ndim == 3 and raw.shape[0] == len(DEPTHS):
+                prof_grid = raw.transpose(1, 2, 0)  # → (H, W, 15)
+            else:
+                prof_grid = raw  # already (H, W, 15)
 
+            H, W, _ = prof_grid.shape
             if var.startswith("temp_"):
                 depth_m = int(var.replace("temp_", "").replace("m", ""))
                 d_idx = DEPTHS.index(depth_m) if depth_m in DEPTHS else 0
-                field = prof_grid[:, :, d_idx].astype(np.float32)
-                return field
+                return prof_grid[:, :, d_idx].astype(np.float32)
             elif var == "mld":
                 return np.array(
-                    [[compute_mld(prof_grid[i, j]) for j in range(prof_grid.shape[1])]
-                     for i in range(prof_grid.shape[0])], dtype=np.float32)
+                    [[compute_mld(prof_grid[i, j]) for j in range(W)]
+                     for i in range(H)], dtype=np.float32)
             elif var == "thermocline_depth":
                 return np.array(
-                    [[compute_thermocline(prof_grid[i, j]) for j in range(prof_grid.shape[1])]
-                     for i in range(prof_grid.shape[0])], dtype=np.float32)
+                    [[compute_thermocline(prof_grid[i, j]) for j in range(W)]
+                     for i in range(H)], dtype=np.float32)
             elif var == "d20":
                 return np.array(
-                    [[compute_d20(prof_grid[i, j]) for j in range(prof_grid.shape[1])]
-                     for i in range(prof_grid.shape[0])], dtype=np.float32)
+                    [[compute_d20(prof_grid[i, j]) for j in range(W)]
+                     for i in range(H)], dtype=np.float32)
             elif var == "uhc":
                 return np.array(
-                    [[compute_uhc(prof_grid[i, j]) for j in range(prof_grid.shape[1])]
-                     for i in range(prof_grid.shape[0])], dtype=np.float32)
+                    [[compute_uhc(prof_grid[i, j]) for j in range(W)]
+                     for i in range(H)], dtype=np.float32)
         return None
     except Exception as e:
-        logger.debug(f"Zarr read failed for {date}/{var}: {e}")
+        logger.warning(f"Zarr read failed for {date}/{var}: {e}")
         return None
 
 
-def _zarr_profile_for_point(date: str, lat: float, lon: float) -> Optional[dict]:
+def _zarr_profile_for_point(date: str, lat: float, lon: float) -> Optional[np.ndarray]:
     """Load a single-point vertical profile from the Zarr target_profiles store."""
     if _zarr_store is None:
         return None
@@ -186,7 +210,11 @@ def _zarr_profile_for_point(date: str, lat: float, lon: float) -> Optional[dict]
         key = f"target_profiles/{date}"
         if key not in _zarr_store:
             return None
-        prof_grid = _zarr_store[key][:]    # (H, W, 15)
+        raw = _zarr_store[key][:]  # shape: (15, H, W) depth-first
+        if raw.ndim == 3 and raw.shape[0] == len(DEPTHS):
+            prof_grid = raw.transpose(1, 2, 0)  # → (H, W, 15)
+        else:
+            prof_grid = raw
         ilat = int(round((lat - 5.0) / 0.25))
         ilon = int(round((lon - 45.0) / 0.25))
         ilat = int(np.clip(ilat, 0, prof_grid.shape[0] - 1))
@@ -197,7 +225,7 @@ def _zarr_profile_for_point(date: str, lat: float, lon: float) -> Optional[dict]
             return None
         return profile
     except Exception as e:
-        logger.debug(f"Zarr profile read failed for {date}@{lat},{lon}: {e}")
+        logger.warning(f"Zarr profile read failed for {date}@{lat},{lon}: {e}")
         return None
 
 
