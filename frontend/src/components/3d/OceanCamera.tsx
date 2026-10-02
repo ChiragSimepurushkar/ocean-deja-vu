@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useDisturbance } from './core/DisturbanceContext';
 
 interface OceanCameraProps {
   currentDepth: number; // 0 to 1000m
@@ -16,6 +17,9 @@ export const OceanCamera: React.FC<OceanCameraProps> = ({ currentDepth }) => {
   // Second-layer smoothed mouse input (reduces jitter)
   const smoothSteerX = useRef(0);
   const smoothSteerY = useRef(0);
+
+  const prevPos = useRef(new THREE.Vector3());
+  const disturbance = useDisturbance();
 
   useFrame((state, delta) => {
     const time = state.clock.getElapsedTime();
@@ -60,6 +64,13 @@ export const OceanCamera: React.FC<OceanCameraProps> = ({ currentDepth }) => {
     // Applied AFTER lookAt so it adds on top without fighting the look direction
     const idleRoll = Math.sin(time * 0.38) * 0.018 + Math.cos(time * 0.19) * 0.010;
     camera.rotation.z += idleRoll;
+
+    // --- Update Disturbance System ---
+    if (disturbance && delta > 0) {
+      const vel = new THREE.Vector3().subVectors(currentPos.current, prevPos.current).divideScalar(delta);
+      disturbance.updateDisturber(0, currentPos.current, vel, 8.0, 1.5);
+      prevPos.current.copy(currentPos.current);
+    }
   });
 
   return null;

@@ -8,6 +8,7 @@ import { MarineSnow3D } from './MarineSnow3D';
 import { Creatures3D } from './Creatures3D';
 import { OceanDepthMarkers } from './OceanDepthMarkers';
 import { OceanBubbles3D } from './OceanBubbles3D';
+import { DisturbanceProvider } from './core/DisturbanceContext';
 import { MarineSpecies } from '../../types';
 import { DiveConfig } from '../../utils/buildDiveConfig';
 
@@ -77,6 +78,7 @@ export const Ocean3DScene: React.FC<Ocean3DSceneProps> = ({
         }}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
       >
+        <DisturbanceProvider>
         <Suspense fallback={null}>
           {/* Cinematic smooth submersible camera */}
           <OceanCamera currentDepth={currentDepth} />
@@ -105,7 +107,7 @@ export const Ocean3DScene: React.FC<Ocean3DSceneProps> = ({
           {/* Subtle sonar depth rings — no HTML labels */}
           <OceanDepthMarkers currentDepth={currentDepth} config={config} />
 
-          {/* Bloom post-processing for bioluminescence */}
+          {/* Post-processing effects */}
           <EffectComposer>
             <Bloom
               intensity={bloomIntensity}
@@ -115,6 +117,7 @@ export const Ocean3DScene: React.FC<Ocean3DSceneProps> = ({
             />
           </EffectComposer>
         </Suspense>
+        </DisturbanceProvider>
       </Canvas>
     </div>
   );

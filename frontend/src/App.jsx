@@ -14,8 +14,12 @@ import NotesPage from './pages/Notes';
 import GoalsPage from './pages/Goals';
 import NewAnalysisPage from './pages/NewAnalysis';
 import SplashPage from './pages/SplashPage';
+import WorkbenchPage from './pages/WorkbenchPage';
 import { TooltipProvider } from './components/Tooltip';
 import './index.css';
+import { startAmbientOceanDrone, stopAmbientOceanDrone, updateUnderwaterDepthAcoustics } from './utils/audio';
+
+import { useOceanSessionStore } from './store/oceanSessionStore';
 
 const TOUR_STEPS = [
   {
@@ -54,10 +58,7 @@ const TOUR_STEPS = [
 ];
 
 function AppContent() {
-  const [date, setDate] = useState('2023-06-01');
-  const [depth, setDepth] = useState('50');
-  const [lat, setLat] = useState(15.0);
-  const [lon, setLon] = useState(85.0);
+  const { currentDate: date, currentDepth: depth, currentLat: lat, currentLon: lon, setDate, setDepth, setLat, setLon, setLocation, activeAlerts, soundEnabled, toggleSound } = useOceanSessionStore();
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -68,7 +69,40 @@ function AppContent() {
   const [runTour, setRunTour] = useState(false);
   
   const [showHelpMenu, setShowHelpMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAlerts, setShowAlerts] = useState(false);
   const [showCmdk, setShowCmdk] = useState(false);
+
+  const topbarRightRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (topbarRightRef.current && !topbarRightRef.current.contains(event.target)) {
+        setShowHelpMenu(false);
+        setShowSettings(false);
+        setShowAlerts(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Global Audio Persistence
+  useEffect(() => {
+    // Requires a user interaction first to unlock AudioContext in most browsers.
+    // The tour, splash screen, or first click usually acts as this trigger.
+    if (soundEnabled && location.pathname !== '/') {
+      startAmbientOceanDrone(true, depth);
+    } else {
+      stopAmbientOceanDrone();
+    }
+  }, [soundEnabled, depth, location.pathname]);
+
+  useEffect(() => {
+    if (soundEnabled && location.pathname !== '/') {
+      updateUnderwaterDepthAcoustics(depth);
+    }
+  }, [depth, soundEnabled, location.pathname]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -90,7 +124,9 @@ function AppContent() {
     setShowSplash(false);
     localStorage.setItem('splashSeen', 'true');
     if (!localStorage.getItem('tourSeen')) {
-      setTimeout(() => setRunTour(true), 500); // slight delay
+      setTimeout(() => {
+        setRunTour(true);
+      }, 500); // slight delay
     }
   };
 
@@ -103,15 +139,23 @@ function AppContent() {
       setRunTour(false);
       localStorage.setItem('tourSeen', 'true');
       navigate('/');
-    } else if (type === 'step:after' || type === 'error:target_not_found') {
+    } else if (type === 'step:after') {
       const nextIndex = index + (action === 'prev' ? -1 : 1);
-      // Route routing to ensure target is mounted
-      if (nextIndex === 0 || nextIndex === 1) navigate('/'); 
-      else if (nextIndex === 2) navigate('/deepdive'); 
-      else if (nextIndex === 3 || nextIndex === 4) navigate('/cinematic'); 
-      else if (nextIndex === 5) navigate('/profile'); 
-      else if (nextIndex === 6) navigate('/goals'); 
-      else if (nextIndex === 7) navigate('/');
+      
+      // Determine the path needed for the new step
+      let targetPath = '/';
+      if (nextIndex === 2) targetPath = '/deepdive';
+      else if (nextIndex === 3 || nextIndex === 4) targetPath = '/cinematic';
+      else if (nextIndex === 5) targetPath = '/profile';
+      else if (nextIndex === 6) targetPath = '/goals';
+      else if (nextIndex === 7) targetPath = '/';
+
+      if (location.pathname !== targetPath) {
+        navigate(targetPath);
+      }
+    } else if (type === 'tour:end') {
+      setRunTour(false);
+      localStorage.setItem('tourSeen', 'true');
     }
   };
 
@@ -142,8 +186,8 @@ function AppContent() {
 
         {/* SIDEBAR */}
         <aside className="sidebar">
-          <div className="logo tour-ocean-map">
-            <div className="logo-icon"><Activity size={24} /></div>
+          <div className="logo tour-ocean-map" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src="/logo.png" alt="Ocean Deja Vu Logo" style={{ width: '32px', height: '32px', borderRadius: '6px' }} />
             OCEAN DEJA VU
           </div>
 
@@ -184,11 +228,20 @@ function AppContent() {
               <Search size={18} color="#8B8C9A" />
               <input type="text" placeholder="Search coordinates (Cmd+K)" onFocus={() => setShowCmdk(true)} />
             </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', background: 'var(--bg-input)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <NavLink to="/" end className={({isActive}) => isActive ? "top-nav-tab active" : "top-nav-tab"} style={({isActive}) => ({ padding: '6px 16px', borderRadius: '4px', textDecoration: 'none', color: isActive ? 'var(--primary)' : 'var(--text-muted)', background: isActive ? 'var(--bg-panel)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' })}>
+                3D Visualizer
+              </NavLink>
+              <NavLink to="/workbench" className={({isActive}) => isActive ? "top-nav-tab active" : "top-nav-tab"} style={({isActive}) => ({ padding: '6px 16px', borderRadius: '4px', textDecoration: 'none', color: isActive ? 'var(--primary)' : 'var(--text-muted)', background: isActive ? 'var(--bg-panel)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' })}>
+                Data Workbench
+              </NavLink>
+            </div>
 
-            <div className="topbar-right">
+            <div className="topbar-right" ref={topbarRightRef}>
               <div style={{ position: 'relative' }}>
                 <button 
-                  onClick={() => setShowHelpMenu(!showHelpMenu)}
+                  onClick={() => { setShowHelpMenu(!showHelpMenu); setShowSettings(false); setShowAlerts(false); }}
                   style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                 >
                   <HelpCircle size={20} color="var(--text-muted)" />
@@ -206,13 +259,80 @@ function AppContent() {
 
               <button 
                 className="tour-theme"
-                onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+                onClick={() => {
+                  setTheme(t => t === 'dark' ? 'light' : 'dark');
+                  setShowHelpMenu(false);
+                  setShowSettings(false);
+                  setShowAlerts(false);
+                }}
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                title="Toggle Theme"
               >
                 {theme === 'dark' ? <Sun size={20} color="var(--text-muted)" /> : <Moon size={20} color="var(--text-muted)" />}
               </button>
-              <Settings size={20} color="var(--text-muted)" style={{cursor: 'pointer'}} />
-              <Bell size={20} color="var(--text-muted)" style={{cursor: 'pointer'}} />
+              
+              {/* Settings Dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => { setShowSettings(!showSettings); setShowAlerts(false); setShowHelpMenu(false); }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  title="Settings"
+                >
+                  <Settings size={20} color="var(--text-muted)" />
+                </button>
+                {showSettings && (
+                  <div style={{ position: 'absolute', top: '30px', right: 0, width: '200px', background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', zIndex: 100, boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>Preferences</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      <span>Temperature</span>
+                      <select style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-main)', borderRadius: '4px', padding: '2px 4px' }}>
+                        <option>°C (Metric)</option>
+                        <option>°F (Imperial)</option>
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      <span>Sound Effects</span>
+                      <input type="checkbox" checked={soundEnabled} onChange={toggleSound} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Alerts Dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => { setShowAlerts(!showAlerts); setShowSettings(false); setShowHelpMenu(false); }}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  title="Alerts"
+                >
+                  <Bell size={20} color="var(--text-muted)" />
+                  {activeAlerts?.length > 0 && (
+                    <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#EF4444', color: 'white', fontSize: '0.6rem', width: '14px', height: '14px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {activeAlerts.length}
+                    </span>
+                  )}
+                </button>
+                {showAlerts && (
+                  <div style={{ position: 'absolute', top: '30px', right: 0, width: '280px', background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0', zIndex: 100, boxShadow: '0 10px 25px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+                    <div style={{ padding: '12px', fontSize: '0.9rem', fontWeight: 600, borderBottom: '1px solid var(--border)', color: 'var(--text-main)', background: 'var(--bg-hover)' }}>Active Alerts</div>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                      {activeAlerts?.length > 0 ? (
+                        activeAlerts.map((alert, i) => (
+                          <div key={i} style={{ padding: '12px', borderBottom: '1px solid var(--border)', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                            <div style={{ color: '#EF4444', fontWeight: 600, marginBottom: '4px' }}>Marine Warning</div>
+                            {alert}
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ padding: '16px', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                          No active alerts for this region.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="user-profile">
                 <span>Deepa</span>
                 <div className="avatar"></div>
@@ -220,8 +340,8 @@ function AppContent() {
             </div>
           </header>
 
-          <div className="dashboard-columns">
-            <div className="center-column">
+          <div className={`dashboard-columns ${location.pathname === '/workbench' ? 'full-width-center' : ''}`}>
+            <div className="center-column" style={location.pathname === '/workbench' ? { flex: '1 1 100%', maxWidth: '100%' } : {}}>
               <Routes>
                 <Route path="/" element={<MapPage date={date} setDate={setDate} depth={depth} setDepth={setDepth} lat={lat} setLat={setLat} lon={lon} setLon={setLon} />} />
                 <Route path="/profile" element={<ProfilePage date={date} lat={lat} lon={lon} />} />
@@ -231,10 +351,12 @@ function AppContent() {
                 <Route path="/notes" element={<NotesPage />} />
                 <Route path="/goals" element={<GoalsPage />} />
                 <Route path="/new" element={<NewAnalysisPage />} />
+                <Route path="/workbench" element={<WorkbenchPage />} />
               </Routes>
             </div>
 
             {/* RIGHT COLUMN (Static Calendar & Promo) */}
+            {location.pathname !== '/workbench' && (
             <div className="right-column">
               <div className="calendar-header">
                 <span>{new Date(date).toLocaleString('default', { month: 'short', year: 'numeric' })}</span>
@@ -334,6 +456,7 @@ function AppContent() {
                 </div>
               </div>
             </div>
+            )}
           </div>
         </main>
 

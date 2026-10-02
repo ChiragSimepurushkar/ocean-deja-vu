@@ -31,8 +31,9 @@ export const TopNav: React.FC<TopNavProps> = ({
       {/* Zone 1: Brand Wordmark (Single text element in display face) */}
       <button
         onClick={() => onSelectView('map')}
-        className="font-display text-lg sm:text-xl font-bold tracking-wider text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer text-left uppercase"
+        className="flex items-center gap-2 font-display text-lg sm:text-xl font-bold tracking-wider text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer text-left uppercase"
       >
+        <img src="/logo.png" alt="Ocean Deja Vu Logo" className="w-6 h-6 sm:w-8 sm:h-8 rounded" />
         Ocean Deja Vu
       </button>
 

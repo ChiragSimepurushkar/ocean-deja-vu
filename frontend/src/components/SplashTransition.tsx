@@ -54,10 +54,12 @@ export const SplashTransition: React.FC<SplashTransitionProps> = ({
       {/* Shockwave Expanding Water Rings centered on clickX, clickY */}
       <div style={{
         position: 'absolute', left: clickX, top: clickY,
-        transform: 'translate(-50%, -50%)'
+        width: 0, height: 0,
       }}>
         {/* Ring 1 - Fast shockwave */}
         <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
           borderRadius: '50%',
           border: '4px solid #67e8f9',
           opacity: 0.9,
@@ -70,10 +72,11 @@ export const SplashTransition: React.FC<SplashTransitionProps> = ({
 
         {/* Ring 2 - Deep oceanic displacement */}
         <div style={{
-          position: 'absolute', top: -32, left: -32, right: -32, bottom: -32,
+          position: 'absolute', top: '50%', left: '50%',
+          width: '64px', height: '64px',
           borderRadius: '50%',
           border: '2px solid #99f6e4',
-          transform: phase === 'submerge' ? 'scale(4)' : 'scale(1)',
+          transform: phase === 'submerge' ? 'translate(-50%, -50%) scale(15)' : 'translate(-50%, -50%) scale(1)',
           opacity: phase === 'submerge' ? 0 : 0.8,
           transition: 'all 0.9s cubic-bezier(0.16, 1, 0.3, 1)',
         }} />

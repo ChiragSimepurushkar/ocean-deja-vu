@@ -1,27 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, MoreHorizontal } from 'lucide-react';
+import { MessageSquare, MoreHorizontal, Layers } from 'lucide-react';
 import Plot from 'react-plotly.js';
 import { getProfile, getDiagnostics } from '../api';
+import { useOceanSessionStore } from '../store/oceanSessionStore';
 
-export default function ProfilePage({ date, lat, lon }) {
+export default function ProfilePage() {
+  const { currentLat, currentLon, currentDate } = useOceanSessionStore();
   const [diagnostics, setDiagnostics] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [overlayAnalog, setOverlayAnalog] = useState(null);
+  const [overlayProfile, setOverlayProfile] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
+    setError(null);
+    setOverlayAnalog(null);
+    setOverlayProfile(null);
+
     Promise.all([
-      getDiagnostics(date, lat, lon).then(data => setDiagnostics(data)),
-      getProfile(date, lat, lon).then(data => setProfile(data))
-    ]).finally(() => setLoading(false));
-  }, [date, lat, lon]);
+      getDiagnostics(currentDate, currentLat, currentLon),
+      getProfile(currentDate, currentLat, currentLon)
+    ]).then(([diagData, profData]) => {
+      if (!isMounted) return;
+      if (!profData || !profData.depths) {
+        throw new Error('No data available for this location/date.');
+      }
+      setDiagnostics(diagData);
+      setProfile(profData);
+    }).catch((err) => {
+      if (isMounted) setError(err.message || 'Failed to load profile.');
+    }).finally(() => {
+      if (isMounted) setLoading(false);
+    });
+
+    return () => { isMounted = false; };
+  }, [currentDate, currentLat, currentLon]);
+
+  const handleOverlay = async (analogDate) => {
+    if (overlayAnalog === analogDate) {
+      setOverlayAnalog(null);
+      setOverlayProfile(null);
+      return;
+    }
+    
+    try {
+      const historicalProf = await getProfile(analogDate, currentLat, currentLon);
+      if (historicalProf && historicalProf.temp_pred) {
+        setOverlayAnalog(analogDate);
+        setOverlayProfile(historicalProf);
+      }
+    } catch (e) {
+      console.error('Failed to load analog profile', e);
+    }
+  };
 
   return (
     <>
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', background: '#F8F9FA', padding: '1rem', borderRadius: '12px' }}>
          <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 600 }}>
-            Analyzing Profile at {lat.toFixed(2)}°N, {lon.toFixed(2)}°E on {date}
+            Analyzing Profile at {currentLat.toFixed(2)}°N, {currentLon.toFixed(2)}°E on {currentDate}
          </span>
       </div>
 
@@ -35,6 +76,8 @@ export default function ProfilePage({ date, lat, lon }) {
         </button>
         {loading ? (
           <div>Loading Profile Data...</div>
+        ) : error ? (
+          <div style={{ color: '#EF4444' }}>{error}</div>
         ) : profile ? (
           <Plot
             data={[
@@ -55,9 +98,18 @@ export default function ProfilePage({ date, lat, lon }) {
                 mode: 'lines+markers',
                 line: { color: '#4F46E5', width: 3 },
                 marker: { size: 6 },
-                name: 'Predicted Temp',
+                name: `Predicted (${currentDate})`,
                 type: 'scatter'
-              }
+              },
+              // Overlay Analog Temperature
+              ...(overlayProfile ? [{
+                x: overlayProfile.temp_pred,
+                y: overlayProfile.depths,
+                mode: 'lines',
+                line: { color: '#EF4444', width: 2, dash: 'dash' },
+                name: `Analog (${overlayAnalog})`,
+                type: 'scatter'
+              }] : [])
             ]}
             layout={{
               margin: { t: 50, b: 40, l: 50, r: 20 },
@@ -76,9 +128,7 @@ export default function ProfilePage({ date, lat, lon }) {
             style={{ width: '100%', height: '100%' }}
             useResizeHandler={true}
           />
-        ) : (
-          <div>Failed to load profile.</div>
-        )}
+        ) : null}
       </div>
 
       <h2 className="section-title" style={{ fontSize: '1.2rem', marginBottom: '1.5rem', marginTop: '2rem' }}>Ocean Diagnostics</h2>
@@ -110,18 +160,29 @@ export default function ProfilePage({ date, lat, lon }) {
         <span className="status-badge">Top Matches</span>
       </div>
 
+      {!profile?.analog_dates?.length && !loading && (
+        <div style={{ color: 'var(--text-muted)' }}>No historical analogs found for this profile.</div>
+      )}
+
       {profile?.analog_dates?.map((analogDate, idx) => (
-        <div key={idx} className="list-item">
+        <div key={idx} className="list-item" style={{ background: overlayAnalog === analogDate ? 'var(--bg-hover)' : 'transparent' }}>
           <div className="list-col">
             <div className="list-title">Date: {analogDate}</div>
             <div className="list-sub">Historical Ocean State Match</div>
           </div>
           <div className="list-col" style={{textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem'}}>
             <MessageSquare size={14} style={{verticalAlign:'middle', marginRight: '4px'}}/> 
-            {(profile.analog_weights[idx] * 100).toFixed(0)}% Similarity
+            {profile.analog_weights ? (profile.analog_weights[idx] * 100).toFixed(0) : 90}% Similarity
           </div>
           <div className="list-col" style={{textAlign: 'right'}}>
-            <MoreHorizontal color="#8B8C9A"/>
+            <button 
+              onClick={() => handleOverlay(analogDate)}
+              className="promo-btn"
+              style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Layers size={14} />
+              {overlayAnalog === analogDate ? 'Remove Overlay' : 'Overlay Profile'}
+            </button>
           </div>
         </div>
       ))}

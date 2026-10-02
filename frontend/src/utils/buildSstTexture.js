@@ -106,3 +106,56 @@ export async function buildSstTexture(oceanData, {
   ctx.putImageData(img, x0, y0);
   return canvas.toDataURL("image/jpeg", 0.92);
 }
+
+// Generates a transparent overlay tailored to the data's exact bounding box (for 2D Maps)
+export async function buildSstOverlay(oceanData, { vmin = 24, vmax = 32, opacity = 0.85 } = {}) {
+  const lats = oceanData.lat;
+  const lons = oceanData.lon;
+  const sst = oceanData.data;
+  
+  const width = lons.length;
+  const height = lats.length;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const imgData = ctx.createImageData(width, height);
+  const d = imgData.data;
+
+  // The arrays are likely ordered: lats[0] is minimum lat, meaning south. 
+  // For canvas, y=0 is top, which should be North (latMax). 
+  // We need to write the image data so that row 0 corresponds to the northernmost latitude.
+  for (let py = 0; py < height; py++) {
+    // Reverse Y so that top of image is the max latitude
+    const dataY = height - 1 - py; 
+    
+    for (let px = 0; px < width; px++) {
+      const v = sst[dataY]?.[px];
+      const i = (py * width + px) * 4;
+
+      if (v === null || v === undefined || Number.isNaN(v)) {
+        d[i + 3] = 0; // Transparent for no data
+      } else {
+        const [r, g, b] = colorAt((v - vmin) / (vmax - vmin));
+        d[i] = r;
+        d[i + 1] = g;
+        d[i + 2] = b;
+        d[i + 3] = Math.floor(opacity * 255);
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+  
+  // Create a smoothed upscaled version for the map so it doesn't look pixelated
+  const upCanvas = document.createElement("canvas");
+  upCanvas.width = width * 4;
+  upCanvas.height = height * 4;
+  const uctx = upCanvas.getContext("2d");
+  uctx.imageSmoothingEnabled = true;
+  uctx.imageSmoothingQuality = "high";
+  uctx.drawImage(canvas, 0, 0, upCanvas.width, upCanvas.height);
+
+  return upCanvas.toDataURL("image/png");
+}

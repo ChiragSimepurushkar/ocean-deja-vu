@@ -7,6 +7,7 @@ import CurtainView from "../components/CurtainView";
 import { useOceanDataset } from "../hooks/useOceanDataset";
 import { buildSstTexture } from "../utils/buildSstTexture";
 import { SplashTransition } from "../components/SplashTransition";
+import { useOceanSessionStore } from "../store/oceanSessionStore";
 
 export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, lon, setLon }) {
   const [advisory, setAdvisory] = useState(null);
@@ -90,9 +91,14 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
     return () => ro.disconnect();
   }, []);
 
+  const { setActiveAlerts } = useOceanSessionStore();
+
   useEffect(() => {
-    getAdvisory(date, lat, lon).then(setAdvisory).catch(console.error);
-  }, [date, lat, lon]);
+    getAdvisory(date, lat, lon).then(data => {
+      setAdvisory(data);
+      setActiveAlerts(data?.alerts || []);
+    }).catch(console.error);
+  }, [date, lat, lon, setActiveAlerts]);
 
   const [texture, setTexture] = useState(null);
   useEffect(() => {
@@ -176,7 +182,7 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
         <SplashTransition
           clickX={splash.x}
           clickY={splash.y}
-          soundEnabled={false}
+          soundEnabled={true}
           stationName={splash.name}
           onComplete={handleSplashComplete}
         />

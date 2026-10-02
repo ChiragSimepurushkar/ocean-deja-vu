@@ -4,6 +4,13 @@ let audioCtx: AudioContext | null = null;
 let ambientGainNode: GainNode | null = null;
 let ambientFilterNode: BiquadFilterNode | null = null;
 let isAudioRunning = false;
+let userInteractionListenerAdded = false;
+
+function resumeContext() {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+}
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -12,10 +19,19 @@ function getAudioContext(): AudioContext | null {
     if (AudioContextClass) {
       audioCtx = new AudioContextClass();
     }
+    
+    if (!userInteractionListenerAdded) {
+      userInteractionListenerAdded = true;
+      const events = ['click', 'touchstart', 'keydown'];
+      const unlockAudio = () => {
+        resumeContext();
+        events.forEach(e => window.removeEventListener(e, unlockAudio));
+      };
+      events.forEach(e => window.addEventListener(e, unlockAudio, { once: true }));
+    }
   }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
-  }
+  
+  resumeContext();
   return audioCtx;
 }
 

@@ -6,9 +6,9 @@ import {
 } from 'lucide-react';
 import { Ocean3DScene } from '../components/3d/Ocean3DScene';
 import { ParallaxUnderwaterScene } from '../components/ParallaxUnderwaterScene';
-import { startAmbientOceanDrone, stopAmbientOceanDrone, updateUnderwaterDepthAcoustics } from '../utils/audio';
 import { getProfile } from '../api';
 import { buildDiveConfig } from '../utils/buildDiveConfig';
+import { useOceanSessionStore } from '../store/oceanSessionStore';
 import './DeepDive.css';
 
 const OCEAN_ZONES = [
@@ -75,33 +75,22 @@ function getCurrentZone(depth) {
   return OCEAN_ZONES[0];
 }
 
-export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85.0 }) {
+export default function DeepDivePage() {
+  const { currentDate: date, currentLat: lat, currentLon: lon, currentDepth, setDepth: setCurrentDepth, soundEnabled, toggleSound } = useOceanSessionStore();
+  
   const navigate = useNavigate();
-  const [currentDepth, setCurrentDepth] = useState(0);
   const [flashlightOn, setFlashlightOn] = useState(true);
   const [renderMode, setRenderMode] = useState('3d');
-  const [soundEnabled, setSoundEnabled] = useState(false);
   const containerRef = useRef(null);
   const sliderRef = useRef(null);
   const isDragging = useRef(false);
-
-  // Audio
-  useEffect(() => {
-    if (soundEnabled) startAmbientOceanDrone(true, currentDepth);
-    else stopAmbientOceanDrone();
-    return () => stopAmbientOceanDrone();
-  }, [soundEnabled]);
-
-  useEffect(() => {
-    if (soundEnabled) updateUnderwaterDepthAcoustics(currentDepth);
-  }, [currentDepth, soundEnabled]);
 
   // Scroll to dive
   const handleWheel = useCallback((e) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 15 : -15;
-    setCurrentDepth((prev) => Math.max(0, Math.min(1000, prev + delta)));
-  }, []);
+    setCurrentDepth(Math.max(0, Math.min(1000, currentDepth + delta)));
+  }, [currentDepth, setCurrentDepth]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -245,7 +234,7 @@ export default function DeepDivePage({ date = '2023-06-01', lat = 15.0, lon = 85
             <span>{flashlightOn ? 'ON' : 'OFF'}</span>
           </button>
           <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
+            onClick={toggleSound}
             className={`dd-btn ${soundEnabled ? 'dd-btn-active' : ''}`}
             title="Toggle Ambient Sound"
           >

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 import { DiveConfig } from '../../utils/buildDiveConfig';
+import { useDisturbance } from './core/DisturbanceContext';
 
 interface MarineSnow3DProps {
   currentDepth: number; // 0 to 1000m
@@ -12,21 +13,34 @@ interface MarineSnow3DProps {
 
 export const MarineSnow3D: React.FC<MarineSnow3DProps> = ({ currentDepth, count = 1200, config }) => {
   const pointsRef = useRef<THREE.Points>(null);
+  const disturbance = useDisturbance();
 
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas');
     canvas.width = 32;
     canvas.height = 32;
     const ctx = canvas.getContext('2d')!;
-    const r = 16;
-    const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.3, 'rgba(255,255,255,0.8)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, 32, 32);
+    
+    // Draw hollow bubble outline
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(r, r, r, 0, Math.PI * 2);
+    ctx.arc(16, 16, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Draw very faint interior
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.fill();
+    
+    // Draw specular highlight
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.beginPath();
+    ctx.arc(10, 10, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    
     return new THREE.CanvasTexture(canvas);
   }, []);
 
@@ -72,10 +86,35 @@ export const MarineSnow3D: React.FC<MarineSnow3DProps> = ({ currentDepth, count 
     for (let i = 0; i < count; i++) {
       const idx = i * 3;
 
-      // Update positions with drift and subtle sine wave current oscillation
-      array[idx] += velocities[idx] + Math.sin(time * 0.8 + originalOffsets[idx + 1] * 0.1) * 0.015;
-      array[idx + 1] += velocities[idx + 1];
-      array[idx + 2] += velocities[idx + 2] + Math.cos(time * 0.6 + originalOffsets[idx] * 0.1) * 0.01;
+      let dx = 0;
+      let dy = 0;
+      let dz = 0;
+
+      // Apply disturbance repulsion
+      if (disturbance) {
+        for (const d of disturbance.disturbers) {
+          if (d.strength <= 0) continue;
+          
+          const diffX = array[idx] - d.position.x;
+          const diffY = array[idx + 1] - d.position.y;
+          const diffZ = array[idx + 2] - d.position.z;
+          const distSq = diffX*diffX + diffY*diffY + diffZ*diffZ;
+          
+          if (distSq > 0 && distSq < d.radius * d.radius) {
+            const dist = Math.sqrt(distSq);
+            // Push away
+            const force = (1.0 - dist / d.radius) * d.strength * 0.05;
+            dx += (diffX / dist) * force;
+            dy += (diffY / dist) * force;
+            dz += (diffZ / dist) * force;
+          }
+        }
+      }
+
+      // Update positions with drift, current, and disturbance
+      array[idx] += velocities[idx] + Math.sin(time * 0.8 + originalOffsets[idx + 1] * 0.1) * 0.015 + dx;
+      array[idx + 1] += velocities[idx + 1] + dy;
+      array[idx + 2] += velocities[idx + 2] + Math.cos(time * 0.6 + originalOffsets[idx] * 0.1) * 0.01 + dz;
 
       // Keep particles recycling around the camera view envelope
       const distFromCamY = array[idx + 1] - cameraY;
