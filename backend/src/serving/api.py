@@ -204,8 +204,8 @@ def load_model():
         base_dir = Path(__file__).resolve().parent.parent.parent
         
         _pipeline = InferencePipeline.from_checkpoints(
-            encoder_ckpt=str(base_dir / "checkpoints/pretrain/encoder_pretrained.ckpt"),
-            decoder_ckpt=str(base_dir / "checkpoints/stage2/best.ckpt"),
+            encoder_ckpt=str(base_dir / "checkpoints/pretrain/encoder_pretrained.pt"),
+            decoder_ckpt=str(base_dir / "checkpoints/stage2/stage2_final.pt"),
             eof_path=str(base_dir / "data/processed/eof/eof_model.pkl"),
             zarr_store_path=os.environ.get("ODV_ZARR_STORE", "../Dataset"),
         )
