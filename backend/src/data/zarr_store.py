@@ -75,6 +75,7 @@ class OceanDataset(Dataset):
         n_modes: int = 8,
         return_sla: bool = False,
         return_profiles: bool = False,
+        return_dates: bool = False,
         synthetic: bool = False,
         num_synthetic_days: int = 30,
     ):
@@ -84,6 +85,7 @@ class OceanDataset(Dataset):
         self.n_modes = n_modes
         self.return_sla = return_sla
         self.return_profiles = return_profiles
+        self.return_dates = return_dates
         self.synthetic = synthetic
 
         if synthetic or store_path is None or not Path(store_path).exists():
@@ -155,6 +157,9 @@ class OceanDataset(Dataset):
                 profiles = np.zeros((15, self._H, self._W), dtype=np.float32)
             result.append(torch.from_numpy(profiles))
 
+        if self.return_dates:
+            result.append(date_str)
+
         return tuple(result)
 
     def _get_synthetic(self, idx: int) -> Tuple[torch.Tensor, ...]:
@@ -195,6 +200,9 @@ class OceanDataset(Dataset):
 
         if self.return_profiles:
             result.append(torch.from_numpy(targets))
+
+        if self.return_dates:
+            result.append(f"2023-01-{idx+1:02d}")
 
         return tuple(result)
 

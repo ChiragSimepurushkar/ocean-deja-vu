@@ -12,8 +12,8 @@ Usage (from SIH/ directory):
 import sys
 import os
 
-# Ensure ML/src is importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "ML"))
+# Ensure backend/src is importable
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
 
 import uvicorn
 
@@ -29,5 +29,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
-        reload_dirs=["ML/src"],
+        reload_dirs=["backend/src"],
     )

@@ -108,7 +108,8 @@ def compute_uhc(profile: np.ndarray, ref_temp: float = 26.0,
 
 def load_cached_or_mock_field(date: str, var: str) -> np.ndarray:
     """Alias used by Streamlit demo pages. Checks disk cache, then generates mock."""
-    cache_path = Path("ML/data/cache/precomputed") / f"{date}_{var}.npy"
+    base_dir = Path(__file__).resolve().parent.parent.parent
+    cache_path = base_dir / "data/cache/precomputed" / f"{date}_{var}.npy"
     if cache_path.exists():
         return np.load(cache_path)
     return generate_mock_field(var, doy=_doy_from_date(date))
@@ -199,10 +200,13 @@ def load_model():
         return
     try:
         from src.serving.inference import InferencePipeline
+        # Resolve absolute paths based on this file's location (backend/src/serving/api.py)
+        base_dir = Path(__file__).resolve().parent.parent.parent
+        
         _pipeline = InferencePipeline.from_checkpoints(
-            encoder_ckpt="checkpoints/pretrain/encoder_pretrained.ckpt",
-            decoder_ckpt="checkpoints/stage2/best.ckpt",
-            eof_path="data/processed/eof/eof_model.pkl",
+            encoder_ckpt=str(base_dir / "checkpoints/pretrain/encoder_pretrained.ckpt"),
+            decoder_ckpt=str(base_dir / "checkpoints/stage2/best.ckpt"),
+            eof_path=str(base_dir / "data/processed/eof/eof_model.pkl"),
             zarr_store_path=os.environ.get("ODV_ZARR_STORE", "../Dataset"),
         )
         logger.info("Loaded live InferencePipeline from checkpoints.")

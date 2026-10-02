@@ -16,16 +16,16 @@ data/processed/*
 !data/processed/.gitkeep
 data/cache/*
 !data/cache/.gitkeep
-ML/data/raw/*
-!ML/data/raw/.gitkeep
-ML/data/processed/*
-!ML/data/processed/.gitkeep
-ML/data/cache/*
-!ML/data/cache/.gitkeep
+backend/data/raw/*
+!backend/data/raw/.gitkeep
+backend/data/processed/*
+!backend/data/processed/.gitkeep
+backend/data/cache/*
+!backend/data/cache/.gitkeep
 
 # ── Model checkpoints ────────────────────────────────────────────────────────
 checkpoints/
-ML/checkpoints/
+backend/checkpoints/
 
 # ── Credentials (NEVER commit these) ─────────────────────────────────────────
 .env
@@ -54,3 +54,5 @@ wandb/
 .coverage
 htmlcov/
 .pytest_cache/
+*.zarr
+*.zip\n*.zarr/\nDataset/

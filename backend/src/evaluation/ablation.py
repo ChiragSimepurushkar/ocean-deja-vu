@@ -104,6 +104,7 @@ def predict_on_dataloader(
     encoder: SurfaceEncoder,
     decoder: torch.nn.Module,
     eof_bridge: Optional[TorchEOFBridge],
+    gt_eof_bridge: TorchEOFBridge,
     dataloader,
     retriever: Optional[AnalogRetriever],
     calibrator: Optional[ConformalCalibrator],
@@ -151,12 +152,10 @@ def predict_on_dataloader(
         B = surface.shape[0]
         pred_mean = pred_prof.reshape(B, -1, pred_prof.shape[-1]).mean(dim=1)  # (B, 15)
 
-        if eof_bridge is not None:
-            true_prof = eof_bridge.decode(
-                true_eof.permute(0, 2, 3, 1).reshape(-1, true_eof.shape[1]).to(device)
-            ).reshape(B, -1, 15).mean(dim=1)  # (B, 15)
-        else:
-            true_prof = true_eof.permute(0, 2, 3, 1).reshape(B, -1, 15).mean(dim=1).to(device)
+        # Ground truth is always provided as EOF coefficients from the dataloader
+        true_prof = gt_eof_bridge.decode(
+            true_eof.permute(0, 2, 3, 1).reshape(-1, true_eof.shape[1]).to(device)
+        ).reshape(B, -1, 15).mean(dim=1)  # (B, 15)
 
         # Analog fusion
         if retriever is not None and date_strs:
@@ -209,19 +208,18 @@ def run_ablation_table(
 
     # Load shared resources
     with open(eof_path, "rb") as f:
-        pca = pickle.load(f)
-    eof_bridge = TorchEOFBridge.from_sklearn(pca)
+        profile_eof = pickle.load(f)
+    eof_bridge = profile_eof.to_torch_bridge()
 
     argo_df = pd.read_parquet(argo_parquet)
     _, lons_argo, months_argo, obs_temps = to_profile_arrays(argo_df)
     lats_argo = argo_df["lat"].values
 
     try:
-        from src.data.zarr_store import make_dataloaders
-        _, val_dl, test_dl = make_dataloaders(
-            store_path, batch_size=batch_size, num_workers=num_workers,
-            return_sla=True, return_dates=True, split="test"
-        )
+        from src.data.zarr_store import OceanDataset
+        from torch.utils.data import DataLoader
+        test_ds = OceanDataset(store_path, split="test", return_sla=True, return_dates=True)
+        test_dl = DataLoader(test_ds, batch_size=batch_size, num_workers=num_workers, shuffle=False)
     except ImportError:
         raise RuntimeError("Zarr store not found — run Dev 1 pipeline first.")
 
@@ -243,7 +241,7 @@ def run_ablation_table(
 
         # Build decoder
         if cfg["use_eof"]:
-            decoder = EOFDecoder(embed_dim=128, n_modes=40)
+            decoder = EOFDecoder(embed_dim=128, n_modes=eof_bridge.components.shape[0])
             bridge  = eof_bridge
         else:
             decoder = DirectDecoder(embed_dim=128, n_depths=15)
@@ -272,7 +270,7 @@ def run_ablation_table(
             retriever = AnalogRetriever.load(retriever_cache)
 
         preds, trues, dates = predict_on_dataloader(
-            encoder, decoder, bridge, test_dl,
+            encoder, decoder, bridge, eof_bridge, test_dl,
             retriever, None, blend_weight, device,
         )
         all_preds[variant] = preds

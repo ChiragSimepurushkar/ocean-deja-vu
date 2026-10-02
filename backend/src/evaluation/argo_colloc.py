@@ -81,10 +81,10 @@ def load_argo_argopy(
     except ImportError:
         raise ImportError("Install argopy: `pip install argopy`")
 
-    argopy.set_options(src="gdac")
+    argopy.set_options(src="erddap")
 
     argo_fetch = ArgoDataFetcher(
-        src="gdac", mode="standard"
+        src="erddap"
     ).region([
         lon_bounds[0], lon_bounds[1],
         lat_bounds[0], lat_bounds[1],
@@ -94,15 +94,15 @@ def load_argo_argopy(
 
     ds = argo_fetch.to_xarray()
 
-    df = ds[["PRES_ADJUSTED", "TEMP_ADJUSTED", "PSAL_ADJUSTED",
-             "TEMP_ADJUSTED_QC", "LATITUDE", "LONGITUDE", "TIME",
+    df = ds[["PRES", "TEMP", "PSAL",
+             "TEMP_QC", "LATITUDE", "LONGITUDE", "TIME",
              "PLATFORM_NUMBER"]].to_dataframe().reset_index(drop=True)
 
     df = df.rename(columns={
-        "PRES_ADJUSTED":    "depth_m",
-        "TEMP_ADJUSTED":    "temp_C",
-        "PSAL_ADJUSTED":    "psal",
-        "TEMP_ADJUSTED_QC": "qc_flag",
+        "PRES":             "depth_m",
+        "TEMP":             "temp_C",
+        "PSAL":             "psal",
+        "TEMP_QC":          "qc_flag",
         "LATITUDE":         "lat",
         "LONGITUDE":        "lon",
         "TIME":             "date",
