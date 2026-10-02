@@ -22,7 +22,7 @@ COPY backend/checkpoints/ ./backend/checkpoints/
 COPY backend/data/ ./backend/data/
 
 # Start server script
-COPY start_server.py .
+COPY backend/start_server.py ./backend/start_server.py
 
 # Expose the API port
 EXPOSE 8000
@@ -34,4 +34,4 @@ ENV ODV_LIVE_MODEL=1
 ENV ODV_ZARR_STORE=/app/Dataset 
 
 # Start the application
-CMD ["python", "start_server.py"]
+CMD ["python", "backend/start_server.py"]

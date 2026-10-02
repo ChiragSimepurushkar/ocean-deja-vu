@@ -1,19 +1,21 @@
 """
 start_server.py — Launches the FastAPI backend for Ocean Deja Vu.
 
-Usage (from SIH/ directory):
+Usage:
     # Mock mode (no trained model needed):
-    python start_server.py
+    python backend/start_server.py
 
     # Live mode (after training):
     set ODV_LIVE_MODEL=1
-    python start_server.py
+    python backend/start_server.py
 """
 import sys
 import os
+from pathlib import Path
 
-# Ensure backend/src is importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
+# Ensure src/ is importable regardless of where the script is run from
+BACKEND_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BACKEND_DIR))
 
 import uvicorn
 
@@ -29,5 +31,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
-        reload_dirs=["backend/src"],
+        reload_dirs=[str(BACKEND_DIR / "src")],
     )
