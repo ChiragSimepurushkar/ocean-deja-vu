@@ -17,7 +17,7 @@ export interface OceanSessionState {
 }
 
 export const useOceanSessionStore = create<OceanSessionState>((set) => ({
-  currentDate: '2023-06-01',
+  currentDate: '2023-01-01',
   currentDepth: 50,
   currentLat: 15.0,
   currentLon: 85.0,

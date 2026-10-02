@@ -38,7 +38,7 @@ export default function CinematicView({ date, lat, lon }) {
   const searchParams = new URLSearchParams(window.location.search);
   const initialLat = parseFloat(searchParams.get('lat') || lat || 15);
   const initialLon = parseFloat(searchParams.get('lon') || lon || 65);
-  const selectedDate = searchParams.get('date') || date || '2023-06-01';
+  const selectedDate = searchParams.get('date') || date || '2023-01-01';
 
   const [loading, setLoading] = useState(true);
   const [layersData, setLayersData] = useState([]);

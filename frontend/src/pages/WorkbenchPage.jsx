@@ -312,11 +312,11 @@ export default function WorkbenchPage() {
               <div className="wb-field-row">
                 <div className="wb-field">
                   <label>Start Date</label>
-                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} min="2023-06-01" max="2023-06-07" />
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} min="2023-01-01" max="2023-01-07" />
                 </div>
                 <div className="wb-field">
                   <label>End Date</label>
-                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min="2023-06-01" max="2023-06-07" />
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min="2023-01-01" max="2023-01-07" />
                 </div>
               </div>
 

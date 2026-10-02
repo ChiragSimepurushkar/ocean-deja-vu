@@ -190,7 +190,7 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
       <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", background: "var(--bg-input)", padding: "1rem", borderRadius: "12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 700 }}>DATE</span>
-          <input type="date" min="2023-06-01" max="2023-06-07" value={date} onChange={e => setDate(e.target.value)} style={{ border: "none", background: "transparent", outline: "none", fontWeight: 600, color: "var(--text-main)" }} />
+          <input type="date" min="2023-01-01" max="2023-01-07" value={date} onChange={e => setDate(e.target.value)} style={{ border: "none", background: "transparent", outline: "none", fontWeight: 600, color: "var(--text-main)" }} />
         </div>
         <div style={{ width: "1px", background: "#E2E8F0", margin: "0 0.5rem" }}></div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
