@@ -9,7 +9,7 @@ export default function ValidationPage() {
   const [region, setRegion] = useState('Arabian Sea');
   const [season, setSeason] = useState('Summer');
 
-  const { heatmapData, lineChartData, loading } = useValidation(region, season);
+  const { heatmapData, lineChartData, summary, loading, error } = useValidation(region, season);
 
   return (
     <>
@@ -150,3 +150,4 @@ export default function ValidationPage() {
     </>
   );
 }
+

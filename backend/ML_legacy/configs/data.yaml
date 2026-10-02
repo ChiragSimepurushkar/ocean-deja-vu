@@ -1,0 +1,41 @@
+domain:
+  lat: [5.0, 30.0]
+  lon: [45.0, 105.0]
+  res: 0.25
+  nlat: 101
+  nlon: 241
+
+depths: [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000]
+
+channels:
+  sst:  {source: ostia,      anomaly: true}
+  sss:  {source: smap_smos,  anomaly: false}
+  ssh:  {source: duacs,      anomaly: true}
+  uo:   {source: oscar}
+  vo:   {source: oscar}
+  uw:   {source: ccmp}
+  vw:   {source: ccmp}
+  # derived — computed in features.py
+  curl_tau:   {}
+  div_uv:     {}
+  sst_grad_x: {}
+  sst_grad_y: {}
+  # coordinate channels
+  lat_sin: {}
+  lon_cos: {}
+  doy_sin: {}
+  doy_cos: {}
+
+n_surface_channels: 15   # 7 obs + 4 derived + 4 coord
+n_depths: 15
+
+splits:
+  train: [2019, 2020, 2021]
+  val:   [2022]
+  test:  [2023]
+  argo_holdout_boxes: [[10, 20, 75, 90]]  # [lat0, lat1, lon0, lon1]
+
+paths:
+  raw:   data/raw
+  proc:  data/processed
+  cache: data/cache

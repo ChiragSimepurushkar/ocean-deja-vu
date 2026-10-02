@@ -1,0 +1,20 @@
+# Ignore training code and research notebooks
+backend/notebooks/
+backend/scripts/
+backend/tests/
+backend/src/training/
+backend/src/evaluation/
+
+# Ignore massive raw datasets (we only need compiled caches/checkpoints)
+# The actual Zarr store might be mounted via a volume in production
+Dataset/
+backend/data/raw/
+
+# Ignore Python cache and environments
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+.pytest_cache/
+.tox/
