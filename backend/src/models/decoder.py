@@ -167,7 +167,9 @@ class TorchEOFBridge(nn.Module):
 
     @classmethod
     def from_sklearn(cls, pca) -> "TorchEOFBridge":
-        """Construct from a fitted sklearn.decomposition.PCA object."""
+        """Construct from a fitted sklearn.decomposition.PCA object or ProfileEOF wrapper."""
+        if hasattr(pca, "pca"):
+            pca = pca.pca  # Extract from ProfileEOF wrapper
         return cls(
             components=pca.components_.astype(np.float32),
             mean=pca.mean_.astype(np.float32),
