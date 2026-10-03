@@ -1,0 +1,165 @@
+const STOPS = [
+  [0.00, [8, 16, 96]],
+  [0.15, [0, 60, 200]],
+  [0.30, [0, 170, 230]],
+  [0.42, [64, 224, 208]],
+  [0.58, [245, 220, 30]],
+  [0.72, [250, 150, 30]],
+  [0.85, [235, 60, 40]],
+  [1.00, [200, 20, 30]],
+];
+
+function colorAt(t) {
+  t = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < STOPS.length; i++) {
+    if (t <= STOPS[i][0]) {
+      const [t0, c0] = STOPS[i - 1], [t1, c1] = STOPS[i];
+      const k = (t - t0) / (t1 - t0);
+      return c0.map((v, j) => v + (c1[j] - v) * k);
+    }
+  }
+  return STOPS[STOPS.length - 1][1];
+}
+
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+
+const MASK_URL = "//unpkg.com/three-globe/example/img/earth-water.png";
+
+export async function buildSstTexture(oceanData, {
+  baseUrl = "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg",
+  W = 4096, H = 2048, vmin = 24, vmax = 32, opacity = 0.92,
+} = {}) {
+  const lats = oceanData.lat;
+  const lons = oceanData.lon;
+  const sst = oceanData.data;
+  const latMin = lats[0];
+  const lonMin = lons[0];
+  const res = lats[1] - lats[0];
+  const latMax = lats[lats.length - 1];
+  const lonMax = lons[lons.length - 1];
+
+  const [baseImg, maskImg] = await Promise.all([loadImage(baseUrl), loadImage(MASK_URL)]);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(baseImg, 0, 0, W, H);
+
+  // mask canvas (same size)
+  const mc = document.createElement("canvas");
+  mc.width = W; mc.height = H;
+  const mctx = mc.getContext("2d", { willReadFrequently: true });
+  mctx.drawImage(maskImg, 0, 0, W, H);
+
+  const x0 = Math.floor(((lonMin + 180) / 360) * W);
+  const x1 = Math.ceil(((lonMax + 180) / 360) * W);
+  const y0 = Math.floor(((90 - latMax) / 180) * H);
+  const y1 = Math.ceil(((90 - latMin) / 180) * H);
+
+  const img = ctx.getImageData(x0, y0, x1 - x0, y1 - y0);
+  const mask = mctx.getImageData(x0, y0, x1 - x0, y1 - y0).data;
+  const d = img.data;
+
+  for (let py = 0; py < img.height; py++) {
+    const lat = 90 - ((py + y0 + 0.5) / H) * 180;
+    const gy = (lat - latMin) / res;
+    for (let px = 0; px < img.width; px++) {
+      const i = (py * img.width + px) * 4;
+
+      // water = bright in earth-water.png, land = dark. 
+      // If image is black for ocean, it would be 1 - mask[i]/255.
+      // Usually earth-water is white for water.
+      const water = mask[i] / 255;
+      if (water < 0.05) continue;            // land: keep base texture
+
+      const lon = ((px + x0 + 0.5) / W) * 360 - 180;
+      const gx = (lon - lonMin) / res;
+      const ix = Math.floor(gx), iy = Math.floor(gy);
+      const fx = gx - ix, fy = gy - iy;
+
+      let sum = 0, wsum = 0;
+      for (const [dx, dy, w] of [
+        [0, 0, (1 - fx) * (1 - fy)], [1, 0, fx * (1 - fy)],
+        [0, 1, (1 - fx) * fy],       [1, 1, fx * fy],
+      ]) {
+        const v = sst[iy + dy]?.[ix + dx];
+        if (v !== null && v !== undefined && !Number.isNaN(v)) { sum += v * w; wsum += w; }
+      }
+      if (wsum === 0) continue;              // no nearby data at all
+
+      const [r, g, b] = colorAt((sum / wsum - vmin) / (vmax - vmin));
+      const a = opacity * water;             // mask drives the coastline edge
+      
+      d[i]     = d[i]     * (1 - a) + r * a;
+      d[i + 1] = d[i + 1] * (1 - a) + g * a;
+      d[i + 2] = d[i + 2] * (1 - a) + b * a;
+    }
+  }
+  ctx.putImageData(img, x0, y0);
+  return canvas.toDataURL("image/jpeg", 0.92);
+}
+
+// Generates a transparent overlay tailored to the data's exact bounding box (for 2D Maps)
+export async function buildSstOverlay(oceanData, { vmin = 24, vmax = 32, opacity = 0.85 } = {}) {
+  const lats = oceanData.lat;
+  const lons = oceanData.lon;
+  const sst = oceanData.data;
+  
+  const width = lons.length;
+  const height = lats.length;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const imgData = ctx.createImageData(width, height);
+  const d = imgData.data;
+
+  // The arrays are likely ordered: lats[0] is minimum lat, meaning south. 
+  // For canvas, y=0 is top, which should be North (latMax). 
+  // We need to write the image data so that row 0 corresponds to the northernmost latitude.
+  for (let py = 0; py < height; py++) {
+    // Reverse Y so that top of image is the max latitude
+    const dataY = height - 1 - py; 
+    
+    for (let px = 0; px < width; px++) {
+      const v = sst[dataY]?.[px];
+      const i = (py * width + px) * 4;
+
+      if (v === null || v === undefined || Number.isNaN(v)) {
+        d[i + 3] = 0; // Transparent for no data
+      } else {
+        const [r, g, b] = colorAt((v - vmin) / (vmax - vmin));
+        d[i] = r;
+        d[i + 1] = g;
+        d[i + 2] = b;
+        d[i + 3] = Math.floor(opacity * 255);
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+  
+  // Create a smoothed upscaled version for the map so it doesn't look pixelated
+  const upCanvas = document.createElement("canvas");
+  upCanvas.width = width * 4;
+  upCanvas.height = height * 4;
+  const uctx = upCanvas.getContext("2d");
+  uctx.imageSmoothingEnabled = true;
+  uctx.imageSmoothingQuality = "high";
+  uctx.drawImage(canvas, 0, 0, upCanvas.width, upCanvas.height);
+
+  return new Promise((resolve) => {
+    upCanvas.toBlob((blob) => {
+      resolve(URL.createObjectURL(blob));
+    }, "image/png");
+  });
+}
