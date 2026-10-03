@@ -8,16 +8,16 @@ import confetti from 'canvas-confetti';
 import SplashPage from './pages/SplashPage';
 import { TooltipProvider } from './components/Tooltip';
 
-// Lazy loaded heavy routes for instant initial app load
-const MapPage = lazy(() => import('./pages/Map'));
-const ProfilePage = lazy(() => import('./pages/Profile'));
-const DeepDivePage = lazy(() => import('./pages/DeepDive'));
-const CinematicViewPage = lazy(() => import('./pages/CinematicView'));
-const ValidationPage = lazy(() => import('./pages/Validation'));
-const NotesPage = lazy(() => import('./pages/Notes'));
-const GoalsPage = lazy(() => import('./pages/Goals'));
-const NewAnalysisPage = lazy(() => import('./pages/NewAnalysis'));
-const WorkbenchPage = lazy(() => import('./pages/WorkbenchPage'));
+// Direct imports instead of lazy loading
+import MapPage from './pages/Map';
+import ProfilePage from './pages/Profile';
+import DeepDivePage from './pages/DeepDive';
+import CinematicViewPage from './pages/CinematicView';
+import ValidationPage from './pages/Validation';
+import NotesPage from './pages/Notes';
+import GoalsPage from './pages/Goals';
+import NewAnalysisPage from './pages/NewAnalysis';
+import WorkbenchPage from './pages/WorkbenchPage';
 import './index.css';
 import { startAmbientOceanDrone, stopAmbientOceanDrone, updateUnderwaterDepthAcoustics } from './utils/audio';
 
@@ -345,7 +345,6 @@ function AppContent() {
 
           <div className={`dashboard-columns ${location.pathname === '/workbench' ? 'full-width-center' : ''}`}>
             <div className="center-column" style={location.pathname === '/workbench' ? { flex: '1 1 100%', maxWidth: '100%' } : {}}>
-              <Suspense fallback={<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--primary)' }}><Loader2 size={32} className="wb-spin" style={{ marginBottom: '1rem' }} /><span>Loading module...</span></div>}>
                 <Routes>
                   <Route path="/" element={<MapPage date={date} setDate={setDate} depth={depth} setDepth={setDepth} lat={lat} setLat={setLat} lon={lon} setLon={setLon} />} />
                   <Route path="/profile" element={<ProfilePage date={date} lat={lat} lon={lon} />} />
@@ -357,7 +356,6 @@ function AppContent() {
                   <Route path="/new" element={<NewAnalysisPage />} />
                   <Route path="/workbench" element={<WorkbenchPage />} />
                 </Routes>
-              </Suspense>
             </div>
 
             {/* RIGHT COLUMN (Static Calendar & Promo) */}
