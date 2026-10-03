@@ -1,29 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { SplashTransition } from '../components/SplashTransition';
 
 export default function SplashPage({ onComplete }) {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const progressInterval = setInterval(() => {
       setLoadingProgress(p => {
         if (p >= 100) {
-          clearInterval(interval);
+          clearInterval(progressInterval);
           return 100;
         }
         return Math.min(100, p + Math.random() * 15);
       });
     }, 200);
-    return () => clearInterval(interval);
+
+    const slideshowInterval = setInterval(() => {
+      setCurrentImageIndex(prev => (prev + 1) % 5);
+    }, 3500);
+
+    return () => {
+      clearInterval(progressInterval);
+      clearInterval(slideshowInterval);
+    };
   }, []);
 
   const handleBegin = () => {
     setTransitioning(true);
   };
-
-  const text = "OCEAN DEJA VU".split("");
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#020617', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -40,25 +47,39 @@ export default function SplashPage({ onComplete }) {
         style={{ position: 'absolute', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)', bottom: '10%', right: '20%' }}
       />
 
-      <div style={{ zIndex: 10, textAlign: 'center' }}>
-        <h1 style={{ display: 'flex', gap: '8px', fontSize: '4rem', fontWeight: 900, color: 'white', margin: 0, textShadow: '0 4px 20px rgba(56,189,248,0.4)' }}>
-          {text.map((char, i) => (
-            <motion.span
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1, duration: 0.5, ease: "easeOut" }}
-            >
-              {char === " " ? "\u00A0" : char}
-            </motion.span>
-          ))}
-        </h1>
+      <div style={{ zIndex: 10, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        
+        {/* Slideshow */}
+        <div style={{ position: 'relative', width: '450px', height: '300px', marginBottom: '2rem' }}>
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={currentImageIndex}
+              src={`/image${currentImageIndex + 1}.png`}
+              alt={`Slide ${currentImageIndex + 1}`}
+              initial={{ opacity: 0, y: 10, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(10px)' }}
+              transition={{ duration: 1, ease: "easeInOut" }}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 10px 20px rgba(56,189,248,0.4))' }}
+            />
+          </AnimatePresence>
+        </div>
+
+        {/* Subtitle Project Name */}
+        <motion.h2 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 1 }}
+          style={{ fontSize: '2.5rem', fontWeight: 900, color: 'white', margin: 0, letterSpacing: '4px', textTransform: 'uppercase', textShadow: '0 4px 20px rgba(56,189,248,0.4)' }}
+        >
+          OCEAN DEJA VU
+        </motion.h2>
         
         <motion.p 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5, duration: 1 }}
-          style={{ color: '#94a3b8', fontSize: '1.2rem', marginTop: '1rem', letterSpacing: '2px', textTransform: 'uppercase' }}
+          style={{ color: '#94a3b8', fontSize: '1.2rem', marginTop: '0.5rem', letterSpacing: '2px', textTransform: 'uppercase' }}
         >
           Reconstructing the ocean you can't see
         </motion.p>
