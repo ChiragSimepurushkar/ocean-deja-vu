@@ -64,7 +64,6 @@ function AppContent() {
   
   const location = useLocation();
   const navigate = useNavigate();
-  const pushDownRightColumn = location.pathname === '/profile' || location.pathname === '/validation';
 
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [showSplash, setShowSplash] = useState(() => !localStorage.getItem('splashSeen'));
@@ -364,101 +363,122 @@ function AppContent() {
             {/* RIGHT COLUMN (Static Calendar & Promo) */}
             {location.pathname !== '/workbench' && (
             <div className="right-column">
-              <div className="calendar-header">
-                <span>{new Date(date).toLocaleString('default', { month: 'short', year: 'numeric' })}</span>
+              {/* ── Calendar ── */}
+              <div style={{ 
+                padding: '1.25rem', borderRadius: '14px', marginBottom: '1.5rem',
+                background: 'var(--bg-panel)', border: '1px solid var(--border)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <span style={{ fontWeight: 800, fontSize: '1rem', fontFamily: 'var(--font-sans)' }}>
+                    {new Date(date).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--primary)', background: 'rgba(56,189,248,0.1)', padding: '3px 8px', borderRadius: '4px', border: '1px solid rgba(56,189,248,0.15)' }}>
+                    7 DAYS
+                  </span>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+                    <div key={day} style={{ textAlign: 'center', fontSize: '0.6rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', padding: '4px 0', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{day}</div>
+                  ))}
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
+                    const d = i >= 3 ? i - 2 : i + 5;
+                    const dateStr = `2023-01-0${d}`;
+                    const isSelected = date === dateStr;
+                    return (
+                      <div 
+                        key={`d-${day}`} 
+                        onClick={() => setDate(dateStr)}
+                        style={{ 
+                          textAlign: 'center', cursor: 'pointer', padding: '8px 0', borderRadius: '8px',
+                          fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.9rem',
+                          color: isSelected ? '#020617' : 'var(--text-main)',
+                          background: isSelected ? 'linear-gradient(135deg, #38bdf8, #0ea5e9)' : 'transparent',
+                          border: isSelected ? 'none' : '1px solid transparent',
+                          boxShadow: isSelected ? '0 4px 12px rgba(56,189,248,0.35)' : 'none',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => { if (!isSelected) { e.target.style.background = 'var(--bg-hover)'; e.target.style.border = '1px solid var(--border)'; }}}
+                        onMouseLeave={(e) => { if (!isSelected) { e.target.style.background = 'transparent'; e.target.style.border = '1px solid transparent'; }}}
+                      >
+                        {d}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              
-              <div style={{ padding: '1rem 0', display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
-                  // Only 7 days (June 1 - June 7 2023)
-                  const isAvailable = (i >= 3 && i <= 6) || (i >= 0 && i <= 2); 
-                  // 1st is Thursday (i=3) to 7th is Wednesday (i=2)
-                  const d = i >= 3 ? i - 2 : i + 5; 
-                  const dateStr = `2023-06-0${d}`;
-                  const isSelected = date === dateStr;
-                  return (
-                    <div 
-                      key={day} 
-                      onClick={() => setDate(dateStr)}
-                      style={{ 
-                        textAlign: 'center', 
-                        cursor: 'pointer',
-                        opacity: 1
-                      }}
-                    >
-                      <div style={{ fontSize: '0.75rem', color: isSelected ? 'var(--primary)' : 'var(--text-muted)', marginBottom: '0.25rem' }}>{day}</div>
-                      <div style={{ 
-                        fontWeight: 800, 
-                        color: isSelected ? 'var(--bg-panel)' : 'var(--text-main)',
-                        background: isSelected ? 'var(--primary)' : 'transparent',
-                        borderRadius: '4px',
-                        padding: '2px 0'
-                      }}>{d}</div>
+
+              {/* ── Timeline Events ── */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                {[
+                  { time: '09:00', title: 'Fetch Copernicus Data', sub: 'Automated Job', color: 'var(--primary)' },
+                  { time: '14:30', title: 'Update ML Model', sub: 'Dev 2 Upload', color: 'var(--accent-warn)' },
+                  { time: '18:00', title: 'Generate PDF Reports', sub: 'Daily Summary', color: 'var(--accent-success)' },
+                ].map((ev, i) => (
+                  <div key={i} style={{ 
+                    display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', padding: '0.75rem',
+                    borderRadius: '10px', background: 'var(--bg-panel)', border: '1px solid var(--border)',
+                    transition: 'all 0.2s',
+                  }}>
+                    <div style={{ width: '3px', borderRadius: '2px', background: ev.color, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: '2px' }}>{ev.time}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '2px' }}>{ev.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: ev.color, fontWeight: 600 }}>{ev.sub}</div>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
 
-              <div style={{ borderLeft: '2px solid #EEF2FF', paddingLeft: '1rem', marginBottom: '1rem' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>09:00 AM</div>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.25rem' }}>Fetch Copernicus Data</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>Automated Job</div>
-              </div>
-
-              <div style={{ borderLeft: '2px solid #EEF2FF', paddingLeft: '1rem', marginBottom: '1rem' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>14:30 PM</div>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.25rem' }}>Update ML Model</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Dev 2 Upload</div>
-              </div>
-
-              <div style={{ borderLeft: '2px solid #EEF2FF', paddingLeft: '1rem' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>18:00 PM</div>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.25rem' }}>Generate PDF Reports</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Daily Summary</div>
-              </div>
-
+              {/* ── Inference Status ── */}
               <div style={{ position: 'sticky', top: '2rem' }}>
-                <div className="task-card" style={{ marginTop: pushDownRightColumn ? '6rem' : '2rem', padding: '1.5rem', borderRadius: '16px', background: 'var(--bg-panel)', border: '1px solid var(--border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02)' }}>
-                <div style={{ fontWeight: 800, marginBottom: '1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Activity size={16} color="var(--primary)" /> Inference Status
+                <div style={{ 
+                  padding: '1.25rem', borderRadius: '14px', marginBottom: '1rem',
+                  background: 'var(--bg-panel)', border: '1px solid var(--border)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                }}>
+                  <div style={{ fontWeight: 800, marginBottom: '1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
+                    <Activity size={14} color="var(--primary)" /> Inference Status
+                  </div>
+                  
+                  {[
+                    { label: 'ConvNeXt-Tiny EOF', value: 'Online', valueColor: 'var(--accent-success)' },
+                    { label: 'Latent Dimension', value: '256', valueColor: 'var(--text-main)' },
+                    { label: 'Data Sync', value: 'Just now', valueColor: 'var(--text-main)' },
+                  ].map((row, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: i < 2 ? '0.6rem' : 0, fontSize: '0.82rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
+                      <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: row.valueColor }}>{row.value}</span>
+                    </div>
+                  ))}
                 </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>ConvNeXt-Tiny EOF</span>
-                  <span style={{ color: '#10B981', fontWeight: 600 }}>Online</span>
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Latent Dimension</span>
-                  <span style={{ fontWeight: 600 }}>256</span>
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Data Sync</span>
-                  <span style={{ fontWeight: 600 }}>Just now</span>
-                </div>
-              </div>
 
-              <div className="task-card" style={{ marginTop: '2rem', marginBottom: '1rem', padding: '1.5rem', borderRadius: '16px', background: 'var(--bg-input)', borderLeft: '4px solid var(--primary)' }}>
-                <div style={{ fontWeight: 800, marginBottom: '1rem', fontSize: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Activity size={16} color="var(--primary)" /> Active Location
-                </div>
-                
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Latitude</label>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{lat.toFixed(2)}°N</span>
+                {/* ── Active Location ── */}
+                <div style={{ 
+                  padding: '1.25rem', borderRadius: '14px', marginBottom: '1rem',
+                  background: 'var(--bg-input)', borderLeft: '3px solid var(--primary)',
+                  border: '1px solid var(--border)',
+                }}>
+                  <div style={{ fontWeight: 800, marginBottom: '1rem', fontSize: '0.9rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Activity size={14} color="var(--primary)" /> Active Location
                   </div>
-                  <input type="range" min="5" max="30" step="0.1" value={lat} onChange={(e) => setLat(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }} />
-                </div>
-                
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Longitude</label>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{lon.toFixed(2)}°E</span>
+                  
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Latitude</label>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--primary)' }}>{lat.toFixed(2)}°N</span>
+                    </div>
+                    <input type="range" min="5" max="30" step="0.1" value={lat} onChange={(e) => setLat(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }} />
                   </div>
-                  <input type="range" min="45" max="105" step="0.1" value={lon} onChange={(e) => setLon(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }} />
-                </div>
+                  
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Longitude</label>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--primary)' }}>{lon.toFixed(2)}°E</span>
+                    </div>
+                    <input type="range" min="45" max="105" step="0.1" value={lon} onChange={(e) => setLon(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }} />
+                  </div>
                 </div>
               </div>
             </div>

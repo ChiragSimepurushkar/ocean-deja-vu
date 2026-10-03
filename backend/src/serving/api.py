@@ -622,6 +622,73 @@ async def get_advisory(
     }
 
 
+@app.get("/export/{date}")
+async def get_export(
+    date: str,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    minLat: Optional[float] = None,
+    maxLat: Optional[float] = None,
+    minLon: Optional[float] = None,
+    maxLon: Optional[float] = None,
+    depth: float = 0,
+):
+    """
+    Exports mock ocean temperature data as a CSV.
+    Supports either a single point (lat/lon) or a bounding box (minLat, maxLat, minLon, maxLon).
+    """
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+
+    # Generate synthetic CSV content
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    if lat is not None and lon is not None:
+        # Point export
+        writer.writerow(["Date", "Latitude", "Longitude", "Depth_m", "Temperature_C", "Salinity_psu"])
+        
+        profile = await get_profile(date, lat, lon)
+        temp_val = profile.get("temp_pred", [28.5])[0]
+        sal_val = profile.get("salinity", [35.0])[0]
+        
+        writer.writerow([date, lat, lon, depth, round(temp_val, 2), round(sal_val, 2)])
+        
+    elif all(v is not None for v in [minLat, maxLat, minLon, maxLon]):
+        # Region export
+        writer.writerow(["Date", "Latitude", "Longitude", "Depth_m", "Temperature_C"])
+        
+        # Grid sample
+        lats_sample = np.linspace(minLat, maxLat, 5)
+        lons_sample = np.linspace(minLon, maxLon, 5)
+        
+        for curr_lat in lats_sample:
+            for curr_lon in lons_sample:
+                # Mock values for region based on base function
+                sst_base = 29.5 if curr_lon >= 77.0 else 28.2
+                sst = sst_base - (curr_lat - 15.0) * 0.08
+                temp_at_depth = (sst - 4.2) * np.exp(-depth / 240.0) + 4.2
+                
+                writer.writerow([
+                    date, 
+                    round(curr_lat, 2), 
+                    round(curr_lon, 2), 
+                    depth, 
+                    round(temp_at_depth, 2)
+                ])
+    else:
+        raise HTTPException(status_code=400, detail="Must provide either lat/lon or minLat/maxLat/minLon/maxLon")
+
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=ocean_export_{date}.csv"}
+    )
+
+
 @app.get("/validation")
 async def get_validation(
     region: str = Query("Arabian Sea"),

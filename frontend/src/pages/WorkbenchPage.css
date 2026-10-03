@@ -14,26 +14,104 @@
   border-right: 1px solid var(--border);
 }
 
+/* ── Redesigned Workbench Depth Slider ── */
 .wb-depth-slider {
   position: absolute;
-  bottom: 2rem;
-  left: 2rem;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  padding: 1rem;
-  border-radius: 8px;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(4, 11, 28, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
   z-index: 10;
   display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 
+    0 10px 30px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  font-family: 'Inter', sans-serif;
+}
+
+.wb-depth-readout {
+  display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.85rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  min-width: 80px;
+}
+
+.wb-depth-readout-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+
+.wb-depth-readout-value {
+  font-size: 1.4rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  color: #f0f9ff;
+  line-height: 1;
+}
+
+.wb-depth-slider-track-wrap {
+  position: relative;
+  width: 300px;
+  height: 24px;
+  display: flex;
+  align-items: center;
 }
 
 .wb-depth-slider input[type="range"] {
-  width: 200px;
-  accent-color: var(--primary);
+  width: 100%;
+  position: relative;
+  z-index: 2;
+  opacity: 0; /* Hide default, but keep clickable */
+  cursor: pointer;
+  height: 100%;
+}
+
+.wb-depth-slider-track {
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  background: rgba(56, 189, 248, 0.15);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.wb-depth-slider-fill {
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+  border-radius: 2px;
+  pointer-events: none;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+.wb-depth-slider-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 3px solid #38bdf8;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.8);
+  transition: transform 0.1s;
+}
+
+.wb-depth-slider:hover .wb-depth-slider-thumb {
+  transform: translate(-50%, -50%) scale(1.15);
 }
 
 .wb-domain-warning {
