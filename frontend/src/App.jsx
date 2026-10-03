@@ -30,32 +30,44 @@ const TOUR_STEPS = [
     disableBeacon: true,
   },
   {
+    target: '.tour-workbench',
+    content: 'Data Workbench: Extract time-series and gridded NetCDF data from the ocean model.',
+    disableBeacon: true,
+  },
+  {
     target: '.tour-globe-click',
     content: 'Click anywhere on the globe to dive deep into a station.',
+    disableBeacon: true,
   },
   {
     target: '.tour-2d-toggle',
     content: 'Explore the 3D Spatial environment and toggle 2D fallback mode if needed.',
+    disableBeacon: true,
   },
   {
     target: '.tour-compass',
     content: 'Use the compass to navigate the Volumetric Probe across the ocean grid.',
+    disableBeacon: true,
   },
   {
     target: '.tour-cinematic',
     content: 'Play the Cinematic Sequence for an automated guided tour of the water column.',
+    disableBeacon: true,
   },
   {
     target: '.tour-catalog',
     content: 'Check the Marine Catalog to track species you discover in the Deep Dive.',
+    disableBeacon: true,
   },
   {
     target: '.tour-leaderboard',
     content: 'Track your expedition Leaderboard standing and badges here.',
+    disableBeacon: true,
   },
   {
     target: '.tour-theme',
     content: 'Toggle between Dark and Light mode.',
+    disableBeacon: true,
   }
 ];
 
@@ -67,7 +79,7 @@ function AppContent() {
 
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [showSplash, setShowSplash] = useState(() => !localStorage.getItem('splashSeen'));
-  const [runTour, setRunTour] = useState(false);
+  const [runTour, setRunTour] = useState(() => !localStorage.getItem('tourSeen') && localStorage.getItem('splashSeen'));
   
   const [showHelpMenu, setShowHelpMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -236,7 +248,7 @@ function AppContent() {
               <NavLink to="/" end className={({isActive}) => isActive ? "top-nav-tab active" : "top-nav-tab"} style={({isActive}) => ({ padding: '6px 16px', borderRadius: '4px', textDecoration: 'none', color: isActive ? 'var(--primary)' : 'var(--text-muted)', background: isActive ? 'var(--bg-panel)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' })}>
                 3D Visualizer
               </NavLink>
-              <NavLink to="/workbench" className={({isActive}) => isActive ? "top-nav-tab active" : "top-nav-tab"} style={({isActive}) => ({ padding: '6px 16px', borderRadius: '4px', textDecoration: 'none', color: isActive ? 'var(--primary)' : 'var(--text-muted)', background: isActive ? 'var(--bg-panel)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' })}>
+              <NavLink to="/workbench" className={({isActive}) => isActive ? "top-nav-tab active tour-workbench" : "top-nav-tab tour-workbench"} style={({isActive}) => ({ padding: '6px 16px', borderRadius: '4px', textDecoration: 'none', color: isActive ? 'var(--primary)' : 'var(--text-muted)', background: isActive ? 'var(--bg-panel)' : 'transparent', fontWeight: 600, fontSize: '0.85rem' })}>
                 Data Workbench
               </NavLink>
             </div>
