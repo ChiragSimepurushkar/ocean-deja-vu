@@ -301,8 +301,6 @@ export default function MapPage({ date, setDate, depth, setDepth, lat, setLat, l
 
         {viewMode === "3d" ? (
           <CurtainView startPoint={transectStart} endPoint={transectEnd} date={date} />
-        ) : loading ? (
-          <div style={{ color: "#aef", fontFamily: "monospace" }}>Loading…</div>
         ) : (
           <Globe
             ref={globeRef}
