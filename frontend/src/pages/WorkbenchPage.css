@@ -9,7 +9,7 @@
 }
 
 .wb-map-panel {
-  flex: 0 0 70%;
+  flex: 0 0 65%;
   position: relative;
   border-right: 1px solid var(--border);
 }
@@ -133,7 +133,7 @@
 }
 
 .wb-control-panel {
-  flex: 0 0 30%;
+  flex: 0 0 35%;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #020617 0%, #081126 100%);
@@ -144,20 +144,15 @@
   overflow-y: auto;
 }
 
-/* Custom Scrollbar for the Control Panel */
+/* Hide Scrollbar for the Control Panel to keep UI clean */
 .wb-control-panel::-webkit-scrollbar {
-  width: 8px;
+  display: none;
 }
-.wb-control-panel::-webkit-scrollbar-track {
-  background: rgba(2, 6, 23, 0.5);
+.wb-control-panel {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
-.wb-control-panel::-webkit-scrollbar-thumb {
-  background: rgba(56, 189, 248, 0.2);
-  border-radius: 4px;
-}
-.wb-control-panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.4);
-}
+
 
 .wb-header {
   padding: 2rem 1.5rem 1.5rem;
@@ -180,6 +175,7 @@
 
 .wb-tabs {
   display: flex;
+  flex-wrap: wrap;
   margin: 1.5rem 1.5rem 0 1.5rem;
   padding: 4px;
   background: rgba(15, 23, 42, 0.8);
