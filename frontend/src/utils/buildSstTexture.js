@@ -157,5 +157,9 @@ export async function buildSstOverlay(oceanData, { vmin = 24, vmax = 32, opacity
   uctx.imageSmoothingQuality = "high";
   uctx.drawImage(canvas, 0, 0, upCanvas.width, upCanvas.height);
 
-  return upCanvas.toDataURL("image/png");
+  return new Promise((resolve) => {
+    upCanvas.toBlob((blob) => {
+      resolve(URL.createObjectURL(blob));
+    }, "image/png");
+  });
 }

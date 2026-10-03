@@ -75,7 +75,7 @@ body {
   font-weight: 800;
   font-size: 1.2rem;
   margin-bottom: 2.5rem;
-  color: #111;
+  color: var(--text-main);
 }
 
 .logo-icon {
