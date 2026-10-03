@@ -91,7 +91,8 @@ function AppContent() {
   useEffect(() => {
     // Requires a user interaction first to unlock AudioContext in most browsers.
     // The tour, splash screen, or first click usually acts as this trigger.
-    if (soundEnabled && location.pathname !== '/') {
+    const audioPages = ['/deepdive', '/cinematic'];
+    if (soundEnabled && audioPages.includes(location.pathname)) {
       startAmbientOceanDrone(true, depth);
     } else {
       stopAmbientOceanDrone();
@@ -99,7 +100,8 @@ function AppContent() {
   }, [soundEnabled, depth, location.pathname]);
 
   useEffect(() => {
-    if (soundEnabled && location.pathname !== '/') {
+    const audioPages = ['/deepdive', '/cinematic'];
+    if (soundEnabled && audioPages.includes(location.pathname)) {
       updateUnderwaterDepthAcoustics(depth);
     }
   }, [depth, soundEnabled, location.pathname]);
