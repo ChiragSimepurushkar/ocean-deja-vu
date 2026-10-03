@@ -9,6 +9,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 config.WORKER_URL = workerUrl;
 
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import DrawRectangle from 'mapbox-gl-draw-rectangle-mode';
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
 import { Activity, MapPin, Square, FileText, Download, Loader2, AlertCircle, X, Box, CheckSquare, Trash2 } from 'lucide-react';
 import './WorkbenchPage.css';
@@ -111,7 +112,11 @@ export default function WorkbenchPage() {
     const draw = new MapboxDraw({
       displayControlsDefault: false,
       controls: { point: false, polygon: false, trash: false },
-      defaultMode: 'draw_point'
+      defaultMode: 'draw_point',
+      modes: {
+        ...MapboxDraw.modes,
+        draw_rectangle: DrawRectangle
+      }
     });
     map.addControl(draw, 'top-right');
     drawRef.current = draw;
@@ -280,9 +285,9 @@ const rasterStyle = {
             <MapPin size={16} />
           </button>
           <button 
-            className={activeDrawMode === 'draw_polygon' ? 'active' : ''} 
-            onClick={() => { drawRef.current?.changeMode('draw_polygon'); setActiveDrawMode('draw_polygon'); }} 
-            title="Draw Region (Polygon)"
+            className={activeDrawMode === 'draw_rectangle' ? 'active' : ''} 
+            onClick={() => { drawRef.current?.changeMode('draw_rectangle'); setActiveDrawMode('draw_rectangle'); }} 
+            title="Draw Region (Rectangle)"
           >
             <Square size={16} />
           </button>
