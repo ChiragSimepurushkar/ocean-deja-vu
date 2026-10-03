@@ -25,8 +25,10 @@ import { useOceanSessionStore } from './store/oceanSessionStore';
 
 const TOUR_STEPS = [
   {
-    target: '.tour-ocean-map',
-    content: 'Ocean Map: See surface temperatures and region-wide data.',
+    target: 'body',
+    placement: 'center',
+    title: 'Welcome to Ocean Deja Vu!',
+    content: 'Let\'s start the exploration. Click Next to begin the tour.',
     disableBeacon: true,
   },
   {

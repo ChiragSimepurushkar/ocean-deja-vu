@@ -73,53 +73,7 @@ export default function SplashPage({ onComplete }) {
 
       <div style={{ zIndex: 10, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         
-        {/* Slideshow with placeholder */}
-        <div style={{ 
-          position: 'relative', width: '500px', height: '320px', marginBottom: '2rem',
-          borderRadius: '16px', overflow: 'hidden',
-          background: 'linear-gradient(135deg, rgba(14,165,233,0.1) 0%, rgba(6,182,212,0.05) 100%)',
-          border: '1px solid rgba(56,189,248,0.1)',
-        }}>
-          {!imagesLoaded && (
-            <div style={{ 
-              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'rgba(56,189,248,0.5)', fontSize: '0.85rem', fontFamily: "'JetBrains Mono', monospace",
-            }}>
-              Loading previews...
-            </div>
-          )}
-          <AnimatePresence mode="wait">
-            {imagesLoaded && (
-              <motion.img
-                key={currentImageIndex}
-                src={IMAGES[currentImageIndex]}
-                alt={`Ocean Deja Vu Preview ${currentImageIndex + 1}`}
-                initial={{ opacity: 0, scale: 1.05 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.8, ease: "easeInOut" }}
-                style={{ 
-                  position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', 
-                  objectFit: 'cover', borderRadius: '16px',
-                }}
-              />
-            )}
-          </AnimatePresence>
 
-          {/* Slide indicator dots */}
-          <div style={{ 
-            position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)',
-            display: 'flex', gap: '8px', zIndex: 5,
-          }}>
-            {IMAGES.map((_, i) => (
-              <div key={i} style={{
-                width: i === currentImageIndex ? '24px' : '8px', height: '8px',
-                borderRadius: '4px', transition: 'all 0.3s ease',
-                background: i === currentImageIndex ? '#38bdf8' : 'rgba(255,255,255,0.3)',
-              }} />
-            ))}
-          </div>
-        </div>
 
         {/* Project Name — subtitle treatment */}
         <motion.h2 
