@@ -15,6 +15,7 @@ import './WorkbenchPage.css';
 
 import { useOceanDataset } from '../hooks/useOceanDataset';
 import { buildSstOverlay } from '../utils/buildSstTexture';
+import { EXPORT_DATA } from '../exportApi';
 
 // Mock Interfaces as requested
 /*
@@ -151,14 +152,24 @@ export default function WorkbenchPage() {
     setIsExporting(true);
     setError(null);
     try {
-      // Mock network delay based on estimate
-      await new Promise(r => setTimeout(r, (estimate?.seconds || 1) * 1000));
-      // Simulate success
+      let params = { depth: currentDepth };
+      if (activeTab === 'point' && selectedPoint) {
+        params.lat = selectedPoint.lat;
+        params.lon = selectedPoint.lon;
+      } else if (activeTab === 'region' && selectedBbox) {
+        params.minLon = selectedBbox[0];
+        params.minLat = selectedBbox[1];
+        params.maxLon = selectedBbox[2];
+        params.maxLat = selectedBbox[3];
+      } else {
+        throw new Error("No valid selection to export.");
+      }
+      
+      await EXPORT_DATA(date, params);
       setIsExporting(false);
-      // In real app, trigger FileResponse download here
-      alert("Download completed!");
     } catch (err) {
-      setError({ code: 'EXPORT_FAILED', message: 'Failed to process the export request. Please try a smaller region.' });
+      console.error(err);
+      setError({ code: 'EXPORT_FAILED', message: err.message || 'Failed to process the export request. Please try a smaller region.' });
       setIsExporting(false);
     }
   };
@@ -257,15 +268,23 @@ export default function WorkbenchPage() {
           </button>
         </div>
         
-        {/* Depth Slider Overlay (reused style) */}
+        {/* ── Redesigned Depth Slider ── */}
         <div className="wb-depth-slider">
-          <label>Depth: {currentDepth}m</label>
-          <input 
-            type="range" 
-            min="0" max="1000" 
-            value={currentDepth} 
-            onChange={e => setDepth(Number(e.target.value))}
-          />
+          <div className="wb-depth-readout">
+            <span className="wb-depth-readout-label">Depth</span>
+            <span className="wb-depth-readout-value">{currentDepth}m</span>
+          </div>
+          <div className="wb-depth-slider-track-wrap">
+            <div className="wb-depth-slider-track" />
+            <div className="wb-depth-slider-fill" style={{ width: `${(currentDepth / 1000) * 100}%` }} />
+            <div className="wb-depth-slider-thumb" style={{ left: `${(currentDepth / 1000) * 100}%` }} />
+            <input 
+              type="range" 
+              min="0" max="1000" 
+              value={currentDepth} 
+              onChange={e => setDepth(Number(e.target.value))}
+            />
+          </div>
         </div>
         
         {!selectionValid && (

@@ -254,8 +254,15 @@ export default function DeepDivePage() {
         <div className="dd-watermark-zone">{zone.name.toUpperCase()}</div>
       </div>
 
-      {/* ════════ LEFT: Telemetry Panel ════════ */}
-      <div className="dd-telemetry-panel dd-glass">
+      {/* ════════ LEFT: Telemetry Panel (Redesigned) ════════ */}
+      <div className="dd-telemetry-panel dd-glass dd-chamfered">
+        {/* L-bracket corner decorations */}
+        <div className="dd-bracket dd-bracket-tl" />
+        <div className="dd-bracket dd-bracket-bl" />
+        <div className="dd-bracket dd-bracket-br" />
+
+        {/* Sonar sweep animation */}
+        <div className="dd-sonar-sweep" />
 
         {/* Header */}
         <div className="dd-panel-header">
@@ -263,60 +270,96 @@ export default function DeepDivePage() {
           <span className="dd-live-dot">LIVE</span>
         </div>
 
-        {/* 4 Primary metrics — 2×2 grid */}
-        <div className="dd-metrics-grid">
-          <div className="dd-metric">
-            <div className="dd-metric-label">
+        {/* ── HERO: Temperature Arc Gauge ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
+          <div style={{ position: 'relative', width: '110px', height: '65px', flexShrink: 0 }}>
+            <svg viewBox="0 0 120 70" width="110" height="65">
+              {/* Background arc */}
+              <path
+                d="M 10 60 A 50 50 0 0 1 110 60"
+                fill="none"
+                stroke="rgba(56,189,248,0.12)"
+                strokeWidth="6"
+                strokeLinecap="round"
+              />
+              {/* Filled arc — maps 0–35°C to arc sweep */}
+              <path
+                d="M 10 60 A 50 50 0 0 1 110 60"
+                fill="none"
+                stroke="url(#tempGrad)"
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeDasharray={`${(Math.min(35, Math.max(0, tempC)) / 35) * 157} 157`}
+              />
+              {/* Needle tick */}
+              {(() => {
+                const angle = -180 + (Math.min(35, Math.max(0, tempC)) / 35) * 180;
+                const rad = (angle * Math.PI) / 180;
+                const cx = 60, cy = 60, r = 50;
+                const nx = cx + r * Math.cos(rad);
+                const ny = cy + r * Math.sin(rad);
+                return <circle cx={nx} cy={ny} r="4" fill="#38bdf8" filter="url(#glow)" />;
+              })()}
+              <defs>
+                <linearGradient id="tempGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#06b6d4" />
+                  <stop offset="50%" stopColor="#38bdf8" />
+                  <stop offset="100%" stopColor="#ef4444" />
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="2" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              {/* Labels */}
+              <text x="12" y="68" fill="#334155" fontSize="7" fontFamily="'JetBrains Mono', monospace">0°</text>
+              <text x="96" y="68" fill="#334155" fontSize="7" fontFamily="'JetBrains Mono', monospace">35°</text>
+            </svg>
+          </div>
+          <div>
+            <div className="dd-metric-label" style={{ marginBottom: '2px' }}>
               <Thermometer size={10} className="dd-metric-icon" /> Temperature
             </div>
-            <div className="dd-metric-value">
-              {tempC.toFixed(1)}<span className="dd-unit">°C</span>
-            </div>
-          </div>
-          <div className="dd-metric">
-            <div className="dd-metric-label">
-              <Gauge size={10} className="dd-metric-icon" /> Pressure
-            </div>
-            <div className="dd-metric-value">
-              {pressureAtm}<span className="dd-unit">atm</span>
-            </div>
-          </div>
-          <div className="dd-metric">
-            <div className="dd-metric-label">
-              <Droplets size={10} className="dd-metric-icon" /> Salinity
-            </div>
-            <div className="dd-metric-value">
-              {salinityPsu.toFixed ? salinityPsu.toFixed(2) : Number(salinityPsu).toFixed(2)}<span className="dd-unit">psu</span>
-            </div>
-          </div>
-          <div className="dd-metric">
-            <div className="dd-metric-label">
-              <Wind size={10} className="dd-metric-icon" /> Dissolved O₂
-            </div>
-            <div className="dd-metric-value">
-              {dissolvedO2}<span className="dd-unit">mL/L</span>
+            <div style={{ fontSize: '2rem', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", color: '#bae6fd', lineHeight: 1 }}>
+              {tempC.toFixed(1)}<span className="dd-unit" style={{ fontSize: '0.7rem' }}>°C</span>
             </div>
           </div>
         </div>
 
-        {/* 3 Secondary metrics */}
-        <div className="dd-secondary-row">
-          <div className="dd-secondary-metric">
-            <div className="dd-secondary-label">
-              <Sun size={9} className="dd-metric-icon" /> Irradiance
+        {/* ── Pressure (second-largest) ── */}
+        <div className="dd-metric" style={{ marginBottom: '0.6rem', padding: '0.5rem 0.75rem' }}>
+          <div className="dd-metric-label">
+            <Gauge size={10} className="dd-metric-icon" /> Pressure
+          </div>
+          <div className="dd-metric-value" style={{ fontSize: '1.3rem' }}>
+            {pressureAtm}<span className="dd-unit">atm</span>
+          </div>
+        </div>
+
+        {/* ── Compact secondary chip row ── */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.7rem' }}>
+          {[
+            { icon: <Droplets size={9} />, label: 'SAL', value: `${(salinityPsu.toFixed ? salinityPsu.toFixed(1) : Number(salinityPsu).toFixed(1))}`, unit: 'psu', color: '#60a5fa' },
+            { icon: <Wind size={9} />, label: 'O₂', value: dissolvedO2, unit: 'mL/L', color: '#2dd4bf' },
+            { icon: <Sun size={9} />, label: 'IRR', value: `${irradiance}`, unit: '%', color: '#fbbf24' },
+            { icon: <Anchor size={9} />, label: 'SND', value: soundSpeed, unit: 'm/s', color: '#94a3b8' },
+            { icon: null, label: 'ΔSST', value: `−${(sst - tempC).toFixed(1)}`, unit: '°', color: '#f87171' },
+          ].map((chip, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: '0.3rem',
+              padding: '0.25rem 0.5rem', borderRadius: '6px',
+              background: 'rgba(2,8,22,0.7)', border: '1px solid rgba(56,189,248,0.08)',
+              fontSize: '0.62rem', fontFamily: "'JetBrains Mono', monospace",
+            }}>
+              {chip.icon && <span style={{ opacity: 0.6, color: chip.color }}>{chip.icon}</span>}
+              <span style={{ color: '#475569', fontWeight: 600 }}>{chip.label}</span>
+              <span style={{ color: chip.color, fontWeight: 700 }}>{chip.value}</span>
+              <span style={{ color: '#334155', fontSize: '0.55rem' }}>{chip.unit}</span>
             </div>
-            <div className="dd-secondary-value">{irradiance}%</div>
-          </div>
-          <div className="dd-secondary-metric">
-            <div className="dd-secondary-label">
-              <Anchor size={9} className="dd-metric-icon" /> Sound Vel.
-            </div>
-            <div className="dd-secondary-value">{soundSpeed} m/s</div>
-          </div>
-          <div className="dd-secondary-metric">
-            <div className="dd-secondary-label">Δ SST</div>
-            <div className="dd-secondary-value">−{(sst - tempC).toFixed(1)}°</div>
-          </div>
+          ))}
         </div>
 
         {/* Divider */}

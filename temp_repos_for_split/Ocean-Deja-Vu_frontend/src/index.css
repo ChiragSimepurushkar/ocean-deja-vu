@@ -1,31 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   /* DARK MODE (Default) */
-  --bg-app: #0F172A;
+  --bg-app: #0a0f1e;
   --bg-panel: #020617;
   --text-main: #F8FAFC;
   --text-muted: #94A3B8;
-  --primary: #38BDF8; 
-  --primary-light: #0369A1;
+  --primary: #38BDF8;
+  --primary-glow: rgba(56, 189, 248, 0.25);
+  --primary-light: #0e2d4a;
   --sidebar-hover: #1E293B;
-  --chart-bg: #020617; 
-  --border: #334155;
-  --bg-input: #1E293B;
+  --chart-bg: #020617;
+  --border: #1e293b;
+  --bg-input: #0f172a;
+  --bg-hover: #1e293b;
+  --accent-warn: #f59e0b;
+  --accent-success: #10b981;
+  --accent-danger: #ef4444;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 :root[data-theme="light"] {
   /* LIGHT MODE */
-  --bg-app: #E6E3FF;
+  --bg-app: #f1f5f9;
   --bg-panel: #FFFFFF;
-  --text-main: #1C1D21;
-  --text-muted: #8B8C9A;
-  --primary: #4F46E5;
-  --primary-light: #EEF2FF;
-  --sidebar-hover: #F8F9FA;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --primary: #0ea5e9;
+  --primary-glow: rgba(14, 165, 233, 0.2);
+  --primary-light: #e0f2fe;
+  --sidebar-hover: #f1f5f9;
   --chart-bg: #FFFFFF;
-  --border: #E2E8F0;
-  --bg-input: #F8F9FA;
+  --border: #e2e8f0;
+  --bg-input: #f8fafc;
+  --bg-hover: #f1f5f9;
 }
 
 html {
@@ -36,7 +45,7 @@ html {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--font-sans);
 }
 
 body {
@@ -48,16 +57,24 @@ body {
   overflow: hidden;
 }
 
-/* Floating White Container */
+/* ═══════════════════════════════════════════════════
+   DASHBOARD CONTAINER — dot-matrix texture + vignette
+   ═══════════════════════════════════════════════════ */
 .dashboard-container {
   background-color: var(--bg-panel);
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 0%, rgba(0,0,0,0.35) 100%),
+    radial-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px;
   width: 100%;
   height: 100%;
   display: flex;
   overflow: hidden;
 }
 
-/* Sidebar */
+/* ═══════════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════════ */
 .sidebar {
   width: 260px;
   padding: 2rem 1.5rem;
@@ -66,6 +83,7 @@ body {
   flex-direction: column;
   overflow-y: auto;
   height: 100%;
+  background: var(--bg-panel);
 }
 
 .logo {
@@ -76,10 +94,11 @@ body {
   font-size: 1.2rem;
   margin-bottom: 2.5rem;
   color: var(--text-main);
+  letter-spacing: 0.02em;
 }
 
 .logo-icon {
-  background: linear-gradient(135deg, #4F46E5, #38BDF8);
+  background: linear-gradient(135deg, #0ea5e9, #38BDF8);
   color: white;
   padding: 0.5rem;
   border-radius: 12px;
@@ -101,26 +120,31 @@ body {
 
 .nav-item:hover {
   background-color: var(--sidebar-hover);
+  color: var(--text-main);
 }
 
 .nav-item.active {
-  background-color: #1C1D21;
-  color: white;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(56, 189, 248, 0.08));
+  color: var(--primary);
+  border: 1px solid rgba(56, 189, 248, 0.15);
 }
 
 .nav-section {
   margin-top: 1.5rem;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  color: #C4C4D1;
+  color: var(--text-muted);
   font-weight: 700;
   padding-left: 1rem;
   margin-bottom: 0.5rem;
+  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
 }
 
+/* ── New Analysis Button — CYAN/TEAL, not violet ── */
 .add-btn {
   margin-top: auto;
-  background-color: #4F46E5;
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
   color: white;
   border: none;
   border-radius: 12px;
@@ -131,14 +155,19 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: 0.2s;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
 }
 
 .add-btn:hover {
-  background-color: #4338CA;
+  background: linear-gradient(135deg, #0284c7, #0891b2);
+  box-shadow: 0 6px 25px rgba(14, 165, 233, 0.45);
+  transform: translateY(-1px);
 }
 
-/* Main Content Area */
+/* ═══════════════════════════════════════════════════
+   MAIN CONTENT AREA
+   ═══════════════════════════════════════════════════ */
 .main-area {
   flex: 1;
   display: flex;
@@ -148,7 +177,9 @@ body {
   height: 100vh;
 }
 
-/* Topbar */
+/* ═══════════════════════════════════════════════════
+   TOPBAR
+   ═══════════════════════════════════════════════════ */
 .topbar {
   padding: 1.5rem 3rem;
   display: flex;
@@ -158,6 +189,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
+  border-bottom: 1px solid var(--border);
 }
 
 .search-bar {
@@ -168,6 +200,12 @@ body {
   border-radius: 12px;
   width: 300px;
   gap: 0.75rem;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+
+.search-bar:focus-within {
+  border-color: var(--primary);
 }
 
 .search-bar input {
@@ -196,10 +234,12 @@ body {
   width: 35px;
   height: 35px;
   border-radius: 50%;
-  background: #E2E8F0;
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
 }
 
-/* Dashboard Columns */
+/* ═══════════════════════════════════════════════════
+   DASHBOARD COLUMNS
+   ═══════════════════════════════════════════════════ */
 .dashboard-columns {
   display: flex;
   flex: 1;
@@ -251,10 +291,10 @@ body {
   border-left: 4px solid var(--primary);
 }
 
-.task-card.green { border-left-color: #10B981; }
-.task-card.orange { border-left-color: #F59E0B; }
+.task-card.green { border-left-color: var(--accent-success); }
+.task-card.orange { border-left-color: var(--accent-warn); }
 .task-card.blue { border-left-color: #3B82F6; }
-.task-card.red { border-left-color: #EF4444; }
+.task-card.red { border-left-color: var(--accent-danger); }
 
 .task-title {
   font-weight: 700;
@@ -315,7 +355,9 @@ body {
   font-weight: 700;
 }
 
-/* Right Column (Calendar/Events) */
+/* ═══════════════════════════════════════════════════
+   RIGHT COLUMN (Calendar/Events)
+   ═══════════════════════════════════════════════════ */
 .right-column {
   flex: 1;
   background: var(--bg-app);
@@ -331,11 +373,12 @@ body {
   align-items: center;
   font-weight: 800;
   margin-bottom: 1.5rem;
+  font-family: var(--font-sans);
 }
 
 .promo-card {
   margin-top: auto;
-  background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+  background: linear-gradient(135deg, #0ea5e9, #06b6d4);
   border-radius: 20px;
   padding: 2rem;
   text-align: center;
@@ -350,7 +393,7 @@ body {
 
 .promo-btn {
   background: white;
-  color: #8B5CF6;
+  color: #0ea5e9;
   border: none;
   padding: 0.75rem 2rem;
   border-radius: 20px;
@@ -359,7 +402,9 @@ body {
   cursor: pointer;
 }
 
-/* Plotly Modebar Styling */
+/* ═══════════════════════════════════════════════════
+   PLOTLY MODEBAR
+   ═══════════════════════════════════════════════════ */
 .modebar-container {
   opacity: 1 !important;
 }
@@ -375,10 +420,12 @@ body {
   fill: #8B8C9A !important;
 }
 .modebar-btn:hover path {
-  fill: #4F46E5 !important;
+  fill: #0ea5e9 !important;
 }
 
-/* Fullscreen Chart */
+/* ═══════════════════════════════════════════════════
+   FULLSCREEN CHART
+   ═══════════════════════════════════════════════════ */
 .fullscreen-chart {
   position: fixed !important;
   top: 0 !important;
@@ -389,4 +436,19 @@ body {
   background: var(--bg-panel);
   border-radius: 0 !important;
   margin: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════
+   GLOBAL UTILITY: monospace numerals
+   ═══════════════════════════════════════════════════ */
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Spin animation for loaders */
+.wb-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
 }
