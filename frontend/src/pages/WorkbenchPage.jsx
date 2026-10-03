@@ -55,8 +55,11 @@ export default function WorkbenchPage() {
   const [endDate, setEndDate] = useState(currentDate);
   const [format, setFormat] = useState('csv');
   const [variables, setVariables] = useState(['temp']);
+
+  const toggleVariable = (v) => {
+    setVariables(prev => prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]);
+  };
   
-  // Estimate & Status State
   // Estimate & Status State
   const [estimate, setEstimate] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -393,9 +396,9 @@ const rasterStyle = {
               <div className="wb-field">
                 <label>Variables</label>
                 <div className="wb-checkbox-group">
-                  <label><input type="checkbox" checked={variables.includes('temp')} onChange={() => {}} /> Temperature</label>
-                  <label><input type="checkbox" checked={variables.includes('mld')} onChange={() => {}} /> Mixed Layer Depth</label>
-                  <label><input type="checkbox" checked={variables.includes('uhc')} onChange={() => {}} /> Upper Heat Content</label>
+                  <label><input type="checkbox" checked={variables.includes('temp')} onChange={() => toggleVariable('temp')} /> Temperature</label>
+                  <label><input type="checkbox" checked={variables.includes('mld')} onChange={() => toggleVariable('mld')} /> Mixed Layer Depth</label>
+                  <label><input type="checkbox" checked={variables.includes('uhc')} onChange={() => toggleVariable('uhc')} /> Upper Heat Content</label>
                 </div>
               </div>
 
