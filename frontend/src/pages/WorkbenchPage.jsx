@@ -180,6 +180,7 @@ export default function WorkbenchPage() {
       <div className="wb-map-panel">
         <Map
           ref={mapRef}
+          style={{ width: '100%', height: '100%' }}
           initialViewState={{
             longitude: currentLon,
             latitude: currentLat,
